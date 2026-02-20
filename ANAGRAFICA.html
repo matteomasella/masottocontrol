@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masotto - Anagrafica (Fixed Layout)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --bg-dark: #080c10; --panel-dark: #0f151a; --panel-light: #131b24; --accent-teal: #2dd4bf; --text-muted: #94a3b8; --border: rgba(255,255,255,0.1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-dark); color: white; margin: 0; height: 100vh; overflow: hidden; }
+        
+        /* LAYOUT FLEXBOX PURO */
+        .main { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 2rem; 
+            background: radial-gradient(circle at top right, #112a2e 0%, #080c10 40%); 
+        }
+        
+        .nav-link { display: flex; items-center; gap: 12px; padding: 10px; border-radius: 8px; color: var(--text-muted); text-decoration: none; margin-bottom: 5px; transition: 0.2s; font-size: 0.9rem; font-weight: 500; }
+        .nav-link:hover, .nav-link.active { background: rgba(45, 212, 191, 0.1); color: var(--accent-teal); border-left: 3px solid var(--accent-teal); }
+
+        /* Card Styles */
+        .info-card { background: var(--panel-dark); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 0; height: 100%; display: flex; flex-direction: column; }
+        .card-header { background: rgba(255,255,255,0.03); padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .card-title { font-weight: 700; font-size: 0.95rem; color: white; display: flex; align-items: center; gap: 8px; }
+        .card-body { padding: 16px; flex: 1; overflow-y: auto; }
+
+        /* Data Row - Flex Logic Migliorata */
+        .data-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px 0; 
+            border-bottom: 1px dashed rgba(255,255,255,0.05); 
+            font-size: 0.9rem; 
+            flex-wrap: nowrap; /* Impedisce rottura indesiderata */
+        }
+        .data-row:last-child { border-bottom: none; }
+        
+        .d-label { 
+            color: var(--text-muted); 
+            font-size: 0.85rem; 
+            font-weight: 500; 
+            white-space: nowrap; /* Etichetta su una riga */
+            margin-right: 15px;
+            min-width: 100px;
+        }
+        
+        .d-val-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex: 1;
+            min-width: 0; /* Permette al testo di accorciarsi se serve, ma non rompersi male */
+        }
+
+        .d-val { 
+            font-family: monospace; 
+            color: white; 
+            font-weight: 600; 
+            text-align: right; 
+            white-space: nowrap; /* Forza il valore su una riga */
+            overflow: hidden;
+            text-overflow: ellipsis; 
+            font-size: 0.95rem;
+        }
+        
+        .d-val-highlight { color: var(--accent-teal); }
+        
+        .edit-btn { color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.2s; }
+        .edit-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .copy-icon { cursor: pointer; opacity: 0.6; min-width: 14px; }
+        .copy-icon:hover { opacity: 1; color: var(--accent-teal); }
+
+        /* Modal */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .modal-box { background: var(--panel-dark); border: 1px solid var(--accent-teal); width: 95%; max-width: 500px; padding: 2rem; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
+        input { width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; margin-bottom: 12px; font-size: 0.9rem; }
+        label { display: block; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 4px; font-weight: 700; text-transform: uppercase; }
+        
+        .btn-primary { background: var(--accent-teal); color: #00282c; padding: 10px; border-radius: 8px; width: 100%; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 10px; border-radius: 8px; width: 100%; font-weight: 600; cursor: pointer; }
+        
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+<style id="masotto-sidebar-css">
+:root{
+  --bg-dark:#0b1220;
+  --panel:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.10);
+  --brand:#004D54;
+  --accent:#2dd4bf;
+}
+body{background:var(--bg-dark);}
+.ms-sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:260px; background:rgba(15,23,42,.96);
+  border-right:1px solid var(--border);
+  padding:20px; z-index:50; overflow:auto;
+}
+.ms-main{margin-left:260px; min-height:100vh;}
+@media (max-width: 900px){
+  .ms-sidebar{transform:translateX(-105%); transition:.2s;}
+  .ms-sidebar.open{transform:translateX(0);}
+  .ms-main{margin-left:0;}
+  .ms-topbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(10px);
+    background:rgba(11,18,32,.75); border-bottom:1px solid var(--border);}
+}
+.ms-nav a{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  color:#94a3b8; font-weight:600; text-decoration:none;
+}
+.ms-nav a:hover{background:rgba(255,255,255,.05); color:#fff;}
+.ms-nav a.active{background:var(--brand); color:var(--accent); border-left:3px solid var(--accent);}
+.ms-chip{font:600 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color:var(--accent); background:rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.25);
+  padding:2px 8px; border-radius:999px; display:inline-block;}
+</style>
+    <script src="masotto_db.js"></script>
+</head>
+<body>
+
+    <div>
+        
+
+        <main class="main">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-3xl font-bold text-white">Fascicolo Digitale</h2>
+                    <div class="text-sm text-gray-400">Masotto Terrace View - Dati Master</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="cards-container">
+                </div>
+        </main>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-xl font-bold mb-4 text-white" id="modalTitle">Modifica Dati</h3>
+            <div id="modalInputs"></div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveData()" class="btn-primary">Salva Modifiche</button>
+                <button onclick="closeModal()" class="btn-secondary">Annulla</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATI REALI (MASTER DATA) ---
+        const MASTER_DATA = {
+            identita: {
+                title: "Identità & Legale",
+                icon: "id-card",
+                fields: [
+                    { key: "nome", label: "Struttura", value: "2M Apartments - Masotto Terrace" },
+                    { key: "indirizzo", label: "Indirizzo", value: "Via Umberto Masotto 4, Milano" },
+                    { key: "cin", label: "CIN", value: "IT015146C2WQ7GCNXX", copy: true },
+                    { key: "cir", label: "CIR", value: "015146-LNI-09408", copy: true },
+                    { key: "catasto", label: "Catasto", value: "Fg. 358 - Part. 278 - Sub. 39" },
+                    { key: "rendita", label: "Rendita Catastale", value: "€ 348,61", highlight: true }
+                ]
+            },
+            proprieta: {
+                title: "Proprietà & Atto",
+                icon: "scroll-text",
+                fields: [
+                    { key: "proprietario", label: "Proprietario", value: "Riccardo Armati" },
+                    { key: "notaio", label: "Notaio", value: "Avv. Giovanni Ricci" },
+                    { key: "data_atto", label: "Data Atto", value: "17/04/2023" },
+                    { key: "prezzo", label: "Valore Atto", value: "€ 230.000,00", highlight: true },
+                    { key: "venditore", label: "Venditore", value: "Massimiliano Ferrari" }
+                ]
+            },
+            admin: {
+                title: "Amministrazione & Portale",
+                icon: "building-2",
+                fields: [
+                    { key: "studio", label: "Amministratore", value: "Giani & Cantarini S.r.l." },
+                    { key: "indirizzo", label: "Indirizzo", value: "Via Negroli 30/2, Milano" },
+                    { key: "email", label: "Email", value: "giani.cantarini@gmail.com", copy: true },
+                    { key: "telefono", label: "Telefono", value: "02 76111056", copy: true },
+                    { key: "portale", label: "Portale Web", value: "www.miocondominio.eu" },
+                    { key: "pid", label: "PID", value: "6318", copy: true },
+                    { key: "user", label: "User", value: "15248", copy: true },
+                    { key: "pass", label: "Password", value: ")=9W!tmFI%", copy: true }
+                ]
+            },
+            utenze: {
+                title: "Utenze & Forniture",
+                icon: "zap",
+                fields: [
+                    { key: "luce_pod", label: "Luce POD", value: "IT012E00186429", copy: true },
+                    { key: "luce_contr", label: "Luce Contr.", value: "6045433825" },
+                    { key: "gas_pdr", label: "Gas PDR", value: "05260200407342", copy: true },
+                    { key: "gas_contr", label: "Gas Contr.", value: "6045405179" },
+                    { key: "wifi", label: "WiFi SSID", value: "FASTWEB-FC918B", copy: true },
+                    { key: "wifipass", label: "WiFi Pass", value: "RJY63788YH", copy: true },
+                    { key: "sepa", label: "SEPA", value: "3F3811A22259022" },
+                    { key: "costo_int", label: "Internet", value: "€ 335,40 / anno" }
+                ]
+            },
+            ape: {
+                title: "Certificazione APE",
+                icon: "leaf",
+                fields: [
+                    { key: "classe", label: "Classe", value: "E", highlight: true },
+                    { key: "ep", label: "Indice EP", value: "132.76 kWh/m²a" },
+                    { key: "scadenza", label: "Scadenza", value: "30/11/2033" },
+                    { key: "tecnico", label: "Tecnico", value: "Arch. M. Nebuloni" },
+                    { key: "cod_ape", label: "Codice APE", value: "1514605631923" }
+                ]
+            }
+        };
+
+        let currentSectionKey = null;
+
+        // --- RENDER ---
+        function renderCards() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = "";
+            
+            for (const [key, section] of Object.entries(MASTER_DATA)) {
+                let rowsHtml = "";
+                section.fields.forEach(f => {
+                    const copyBtn = f.copy ? `<i data-lucide="copy" class="copy-icon" onclick="copyToClipboard('${f.value.replace(/'/g, "\\'")}')" title="Copia"></i>` : '';
+                    const valClass = f.highlight ? 'd-val d-val-highlight' : 'd-val';
+                    
+                    rowsHtml += `
+                    <div class="data-row">
+                        <span class="d-label">${f.label}</span>
+                        <div class="d-val-container">
+                            <span class="${valClass}" title="${f.value}">${f.value}</span>
+                            ${copyBtn}
+                        </div>
+                    </div>`;
+                });
+
+                const html = `
+                <div class="info-card">
+                    <div class="card-header">
+                        <div class="card-title"><i data-lucide="${section.icon}" class="text-teal-400 w-5 h-5"></i> ${section.title}</div>
+                        <button class="edit-btn" onclick="openEditModal('${key}')"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="card-body">
+                        ${rowsHtml}
+                    </div>
+                </div>`;
+                container.innerHTML += html;
+            }
+            lucide.createIcons();
+        }
+
+        // --- EDIT LOGIC ---
+        function openEditModal(sectionKey) {
+            currentSectionKey = sectionKey;
+            const section = MASTER_DATA[sectionKey];
+            document.getElementById('modalTitle').innerText = "Modifica " + section.title;
+            const inputsDiv = document.getElementById('modalInputs');
+            inputsDiv.innerHTML = "";
+            section.fields.forEach((f, index) => {
+                inputsDiv.innerHTML += `
+                    <div>
+                        <label>${f.label}</label>
+                        <input type="text" id="input_${index}" value="${f.value.replace(/"/g, '&quot;')}">
+                    </div>`;
+            });
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function saveData() {
+            if (!currentSectionKey) return;
+            const section = MASTER_DATA[currentSectionKey];
+            section.fields.forEach((f, index) => {
+                const newVal = document.getElementById(`input_${index}`).value;
+                f.value = newVal;
+            });
+            closeModal();
+            renderCards();
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentSectionKey = null;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+        }
+
+        window.onload = renderCards;
+    </script>
+<script id="masotto-sidebar">
+(function(){
+  const PAGES = [
+    ["index.html","Dashboard","layout-dashboard"],
+    ["ANAGRAFICA.html","Anagrafica","id-card"],
+    ["asset.html","Asset","boxes"],
+    ["audit.html","Audit","clipboard-check"],
+    ["manutenzione.html","Manutenzione","wrench"],
+    ["prenotazioni.html","Prenotazioni","calendar"],
+    ["FINANZE.html","Finanze","pie-chart"],
+    ["conto.html","Conto","wallet"],
+    ["consuntivo_25.html","Consuntivo 2025","file-text"],
+    ["sicurezza.html","Sicurezza","shield"]
+  ];
+
+  function purgeOtherAlloggi(){
+    try{
+      const kill = ["nolo","suite","nest","studio","heritage","bassano","chavez","termopili"];
+      Object.keys(localStorage).forEach(k=>{
+        const lk = k.toLowerCase();
+        if(k.startsWith("masotto_")) return;
+        if(kill.some(t=>lk.includes(t))) localStorage.removeItem(k);
+      });
+          window.__MS_SIDEBAR_DONE = true;
+}catch(e){}
+  }
+
+  async function ensureMasterDB(force=false){
+    try{
+      let master = null;
+
+      if(window.MASOTTO_DB) master = window.MASOTTO_DB;
+
+      if(!master){
+        const res = await fetch("masotto_complete_database.json", {cache:"no-store"});
+        if(!res.ok) throw new Error("fetch failed");
+        master = await res.json();
+      }
+
+const map = {
+        "masotto_prop_data": "property_master",
+        "masotto_assets_mobile_db": "assets_mobile",
+        "masotto_structural_assets_db": "structural_assets",
+        "masotto_finance_db": "finances",
+        "masotto_booking_db": "bookings",
+        "masotto_maint_db": "tickets",
+        "masotto_insurance_db": "insurance",
+        "masotto_utilities_db": "utilities",
+        "masotto_contacts_db": "contacts",
+        "masotto_maintenance_presets_db": "maintenance_presets"
+      };
+
+      purgeOtherAlloggi();
+
+      for(const [lsKey, section] of Object.entries(map)){
+        const existing = localStorage.getItem(lsKey);
+        const isEmpty = !existing || existing==="null" || existing==="[]" || existing==="{}";
+        if(force || isEmpty){
+          localStorage.setItem(lsKey, JSON.stringify(master[section] ?? []));
+        }
+      }
+      localStorage.setItem("active_property", "Masotto Terrace View");
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function mountSidebar(){
+  // idempotent mount (safe even if scripts load twice)
+  if (window.__MS_SIDEBAR_DONE && document.getElementById("msSidebar")) return;
+  try{
+    // remove legacy sidebars, but NEVER remove #msSidebar
+    document.querySelectorAll("aside.sidebar, div.sidebar, #sidebar, [data-legacy-sidebar=\"1\"]").forEach(el=>el.remove());
+    document.querySelectorAll(".ms-sidebar").forEach(el=>{ if(el.id !== "msSidebar") el.remove(); });
+  }catch(e){}
+  if (document.getElementById("msSidebar")) { window.__MS_SIDEBAR_DONE = true; return; }
+
+  const path = (location.pathname.split("/").pop() || "index.html");
+    const nav = PAGES.map(([href,label,icon])=>{
+      const active = (href.toLowerCase() === path.toLowerCase()) ? "active" : "";
+      return `<a class="${active}" href="${href}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></a>`;
+    }).join("");
+
+    const sidebar = document.createElement("aside");
+    sidebar.className="ms-sidebar";
+    sidebar.id="msSidebar";
+    sidebar.innerHTML = `
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+             style="background:linear-gradient(135deg,#004D54,#10b981)">2M</div>
+        <div>
+          <div class="text-white font-bold leading-tight">Masotto Terrace</div>
+          <div class="ms-chip">single-property mode</div>
+        </div>
+      </div>
+      <nav class="ms-nav space-y-1">${nav}</nav>
+      <div class="mt-6 p-3 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+        <div class="text-[11px] text-gray-400">Data source</div>
+        <div class="text-[12px] text-white font-semibold">masotto_complete_database.json</div>
+        <button id="msSyncBtn" class="mt-3 w-full text-xs font-bold px-3 py-2 rounded-lg"
+          style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.35);color:#a7f3d0;">
+          Sync DB
+        </button>
+      </div>
+    `;
+
+    // main wrapper
+    const mainWrap = document.createElement("div");
+    mainWrap.className = "ms-main";
+    while(document.body.firstChild){
+      mainWrap.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(sidebar);
+    document.body.appendChild(mainWrap);
+
+    // mobile topbar + toggle
+    const topbar = document.createElement("div");
+    topbar.className="ms-topbar p-3 flex items-center justify-between lg:hidden";
+    topbar.innerHTML = `
+      <button id="msToggle" class="px-3 py-2 rounded-lg text-white text-xs font-bold"
+        style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);">
+        ☰ Menu
+      </button>
+      <div class="text-white font-bold text-sm">Masotto Terrace</div>
+      <div style="width:64px"></div>
+    `;
+    mainWrap.prepend(topbar);
+
+    document.getElementById("msToggle").addEventListener("click", ()=>{
+      sidebar.classList.toggle("open");
+    });
+    document.getElementById("msSyncBtn").addEventListener("click", async ()=>{
+      await ensureMasterDB(true);
+      location.reload();
+    });
+  }
+
+  // boot
+  window.__ensureMasottoDB = ensureMasterDB;
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    await ensureMasterDB(false);
+    mountSidebar();
+    if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  });
+})();
+</script>
+    
+</body>
+</html>

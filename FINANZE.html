@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masotto - Finanze Editabili</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --bg-dark: #080c10; --panel-dark: #0f151a; --panel-light: #131b24; --accent-teal: #2dd4bf; --accent-indigo: #6366f1; --accent-orange: #f59e0b; --accent-red: #ef4444; --border: rgba(255,255,255,0.1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-dark); color: white; margin: 0; height: 100vh; overflow: hidden; }
+        
+        .main { flex: 1; overflow-y: auto; padding: 2rem; background: radial-gradient(circle at top right, #112a2e 0%, #080c10 40%); }
+        
+        .nav-link { display: flex; items-center; gap: 12px; padding: 10px; border-radius: 8px; color: #94a3b8; text-decoration: none; margin-bottom: 5px; font-size: 0.9rem; font-weight: 500; }
+        .nav-link:hover, .nav-link.active { background: rgba(45, 212, 191, 0.1); color: var(--accent-teal); border-left: 3px solid var(--accent-teal); }
+
+        /* KPI */
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        .kpi-card { background: var(--panel-light); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; }
+        .kpi-label { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px; }
+        .kpi-val { font-size: 1.8rem; font-weight: 800; color: white; }
+
+        /* GRID */
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1.2fr; gap: 1.5rem; }
+        .col-left { display: flex; flex-direction: column; gap: 1.5rem; }
+        .col-right { display: flex; flex-direction: column; gap: 1.5rem; }
+
+        /* CARDS */
+        .card { background: var(--panel-light); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+        .card-header { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
+        .card-body { padding: 0; overflow-x: auto; }
+
+        /* TABLE */
+        .f-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .f-table th { text-align: left; padding: 12px 15px; color: #94a3b8; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; }
+        .f-table td { padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; vertical-align: middle; }
+        .f-table tr:hover { background: rgba(255,255,255,0.02); }
+
+        .cat-tag { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+        .ct-tasse { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); } 
+        .ct-ord { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); } 
+        .ct-str { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); } 
+        .ct-ut { background: rgba(45, 212, 191, 0.15); color: #2dd4bf; border: 1px solid rgba(45, 212, 191, 0.3); } 
+
+        /* ACTIONS */
+        .action-btn { padding: 6px; border-radius: 6px; cursor: pointer; transition: 0.2s; color: #94a3b8; display: inline-flex; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+        .ab-edit:hover { color: var(--accent-teal); }
+        .ab-del:hover { color: var(--accent-red); }
+
+        /* WIDGET CONDOMINIO */
+        .condo-section { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .cs-title { font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .cs-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
+        .cs-row.paid { color: #64748b; text-decoration: line-through; }
+        .cs-row.pending { color: white; font-weight: 500; }
+
+        /* MODAL */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .modal-box { background: #0f151a; border: 1px solid var(--accent-teal); padding: 2rem; border-radius: 16px; width: 500px; }
+        input, select { width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; margin-bottom: 10px; }
+        .btn-primary { background: var(--accent-teal); color: #00282c; padding: 10px; border-radius: 8px; font-weight: 700; width: 100%; margin-top: 10px; cursor: pointer; }
+
+        .chart-wrap { height: 250px; position: relative; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+<style id="masotto-sidebar-css">
+:root{
+  --bg-dark:#0b1220;
+  --panel:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.10);
+  --brand:#004D54;
+  --accent:#2dd4bf;
+}
+body{background:var(--bg-dark);}
+.ms-sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:260px; background:rgba(15,23,42,.96);
+  border-right:1px solid var(--border);
+  padding:20px; z-index:50; overflow:auto;
+}
+.ms-main{margin-left:260px; min-height:100vh;}
+@media (max-width: 900px){
+  .ms-sidebar{transform:translateX(-105%); transition:.2s;}
+  .ms-sidebar.open{transform:translateX(0);}
+  .ms-main{margin-left:0;}
+  .ms-topbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(10px);
+    background:rgba(11,18,32,.75); border-bottom:1px solid var(--border);}
+}
+.ms-nav a{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  color:#94a3b8; font-weight:600; text-decoration:none;
+}
+.ms-nav a:hover{background:rgba(255,255,255,.05); color:#fff;}
+.ms-nav a.active{background:var(--brand); color:var(--accent); border-left:3px solid var(--accent);}
+.ms-chip{font:600 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color:var(--accent); background:rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.25);
+  padding:2px 8px; border-radius:999px; display:inline-block;}
+</style>
+    <script src="masotto_db.js"></script>
+
+<style>
+.page-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:18px 0 18px}
+.kicker{color:rgba(191,235,255,.85);font-weight:700;letter-spacing:.08em;font-size:12px;text-transform:uppercase}
+.title{margin:6px 0 6px;font-size:32px;letter-spacing:-.02em}
+.sub{color:rgba(226,232,240,.75);font-size:13px}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#e2e8f0;padding:10px 12px;border-radius:999px;cursor:pointer}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:14px 0 18px}
+.kpi{background:rgba(255,255,255,.06);border:1px solid rgba(191,235,255,.12);border-radius:18px;padding:14px}
+.kpi.warn{border-color:rgba(251,191,36,.25)}
+.kpi.good{border-color:rgba(34,197,94,.25)}
+.kpi-label{color:rgba(226,232,240,.75);font-size:12px}
+.kpi-value{font-size:22px;font-weight:800;margin-top:6px}
+.kpi-foot{color:rgba(226,232,240,.55);font-size:12px;margin-top:4px}
+.panel{background:rgba(255,255,255,.04);border:1px solid rgba(191,235,255,.10);border-radius:20px;padding:16px;margin:14px 0}
+.panel-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}
+.panel h2{margin:0;font-size:18px}
+.hint{color:rgba(226,232,240,.6);font-size:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:rgba(15,23,42,.35);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px}
+.card-title{color:rgba(226,232,240,.8);font-size:13px;margin-bottom:10px}
+.table-wrap{overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,.06)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th,.tbl td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+.tbl th{color:rgba(226,232,240,.8);text-align:left;font-weight:700;background:rgba(15,23,42,.35)}
+.tbl td{color:rgba(226,232,240,.85)}
+.tbl td.num,.tbl th.num{text-align:right;white-space:nowrap}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 12px}
+.input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#e2e8f0;padding:10px 12px;border-radius:12px;min-width:220px}
+@media (max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+    <div>
+        
+
+        <main class="main">
+  <div class="container">
+    <div class="page-top">
+      <div>
+        <div class="kicker">Masotto Terrace View</div>
+        <h1 class="title">Financial Control</h1>
+        <div class="sub">Conto corrente + Consuntivo (dinamico) · escluso IMU/TARI · con accantonamento cedolare secca</div>
+      </div>
+      <div class="chips">
+        <button class="chip" onclick="scrollToSection('sec-contabile')">Conto</button>
+        <button class="chip" onclick="scrollToSection('sec-consuntivo')">Consuntivo</button>
+        <button class="chip" onclick="scrollToSection('sec-movimenti')">Movimenti</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Entrate (lordo/netto)</div>
+        <div class="kpi-value" id="kpi-income">€ 0,00</div>
+        <div class="kpi-foot" id="kpi-income-foot">0 prenotazioni</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Uscite (escl. IMU/TARI)</div>
+        <div class="kpi-value" id="kpi-expense">€ 0,00</div>
+        <div class="kpi-foot" id="kpi-expense-foot">0 movimenti</div>
+      </div>
+      <div class="kpi warn">
+        <div class="kpi-label">Accantonamento Cedolare (21%)</div>
+        <div class="kpi-value" id="kpi-tax">€ 0,00</div>
+        <div class="kpi-foot" id="kpi-tax-foot">stima su imponibile</div>
+      </div>
+      <div class="kpi good">
+        <div class="kpi-label">Saldo operativo stimato</div>
+        <div class="kpi-value" id="kpi-net">€ 0,00</div>
+        <div class="kpi-foot" id="kpi-net-foot">entrate - uscite - cedolare</div>
+      </div>
+    </div>
+
+    <section class="panel" id="sec-contabile">
+      <div class="panel-head">
+        <h2>Conto corrente (dinamico)</h2>
+        <div class="hint">Tutte le entrate/uscite dall'inizio attività. IMU e TARI escluse.</div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Entrate vs Uscite vs Cedolare</div>
+          <canvas id="chartDonut" height="180"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Trend mensile</div>
+          <canvas id="chartMonthly" height="180"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="sec-consuntivo">
+      <div class="panel-head">
+        <h2>Consuntivo (live)</h2>
+        <div class="hint">Si aggiorna dal database locale: prenotazioni + movimenti.</div>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Voce</th>
+              <th class="num">Importo</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="consuntivoRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="sec-movimenti">
+      <div class="panel-head">
+        <h2>Movimenti</h2>
+        <div class="hint">Prenotazioni = entrate · Finanze = uscite (IMU/TARI filtrate).</div>
+      </div>
+
+      <div class="filters">
+        <input class="input" id="q" placeholder="Cerca (ospite / descrizione / categoria)" oninput="renderMovements()" />
+        <select class="input" id="fType" onchange="renderMovements()">
+          <option value="ALL">Tutti</option>
+          <option value="IN">Entrate</option>
+          <option value="OUT">Uscite</option>
+        </select>
+        <select class="input" id="fYear" onchange="renderMovements()"></select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Dettaglio</th>
+              <th>Categoria</th>
+              <th class="num">Importo</th>
+            </tr>
+          </thead>
+          <tbody id="movRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-box">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white" id="modalTitle">Modifica Spesa</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
+            </div>
+            <input type="hidden" id="edit-id">
+            
+            <label class="text-xs text-gray-400 uppercase font-bold">Descrizione</label>
+            <input type="text" id="edit-desc" placeholder="Es. Idraulico Urgente">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase font-bold">Data Scadenza</label>
+                    <input type="date" id="edit-date">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase font-bold">Importo (€)</label>
+                    <input type="number" id="edit-amount" step="0.01">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase font-bold">Categoria</label>
+                    <select id="edit-cat">
+                        <option value="utenze">Utenze (Luce/Gas/Internet)</option>
+                        <option value="tasse">Tasse & Fisse (IMU/TARI/Ass)</option>
+                        <option value="ordinaria">Condominio Ordinario</option>
+                        <option value="straordinaria">Condominio Straordinario</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase font-bold">Stato Pagamento</label>
+                    <select id="edit-status">
+                        <option value="pending">In Scadenza (Rosso)</option>
+                        <option value="paid">Pagato (Verde)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="saveTransaction()" class="btn-primary">Salva Modifiche</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATASET INIZIALE (GENERATO UNA TANTUM, POI EDITABILE IN MEMORIA) ---
+        let transactions = [
+            // 2026
+            { id: 1, date: '2026-12-16', cat: 'tasse', desc: 'IMU Saldo 2026', amount: 334.00, status: 'pending' },
+            { id: 2, date: '2026-12-10', cat: 'tasse', desc: 'Assicurazione 2026', amount: 195.00, status: 'pending' },
+            { id: 3, date: '2026-12-05', cat: 'tasse', desc: 'TARI 2026', amount: 155.00, status: 'pending' },
+            { id: 4, date: '2026-06-16', cat: 'tasse', desc: 'IMU Acconto 2026', amount: 334.00, status: 'pending' },
+            { id: 5, date: '2026-03-15', cat: 'straordinaria', desc: 'Rata Terrazza 4', amount: 48.26, status: 'pending' },
+            { id: 6, date: '2026-02-15', cat: 'straordinaria', desc: 'Rata Terrazza 3', amount: 72.38, status: 'pending' },
+            { id: 7, date: '2026-01-31', cat: 'tasse', desc: 'Canone RAI Speciale', amount: 203.70, status: 'pending' },
+            { id: 8, date: '2026-01-31', cat: 'utenze', desc: 'A2A Luce (Dic-Gen)', amount: 192.00, status: 'pending' },
+            { id: 9, date: '2026-01-15', cat: 'straordinaria', desc: 'Rata Terrazza 2', amount: 72.38, status: 'pending' },
+
+            // 2025
+            { id: 10, date: '2025-12-16', cat: 'tasse', desc: 'IMU Saldo 2025', amount: 334.00, status: 'paid' },
+            { id: 11, date: '2025-12-15', cat: 'straordinaria', desc: 'Rata Terrazza 1', amount: 48.26, status: 'paid' },
+            { id: 12, date: '2025-12-10', cat: 'tasse', desc: 'Assicurazione 2025', amount: 195.00, status: 'paid' },
+            { id: 13, date: '2025-12-05', cat: 'tasse', desc: 'TARI 2025', amount: 155.00, status: 'paid' },
+            { id: 14, date: '2025-11-30', cat: 'utenze', desc: 'A2A Luce (Ott-Nov)', amount: 137.00, status: 'paid' },
+            { id: 15, date: '2025-10-15', cat: 'ordinaria', desc: 'Rata Condo Ord. 2', amount: 450.00, status: 'paid' },
+            { id: 16, date: '2025-09-30', cat: 'utenze', desc: 'A2A Luce (Ago-Set)', amount: 103.00, status: 'paid' },
+            { id: 17, date: '2025-07-31', cat: 'utenze', desc: 'A2A Luce (Giu-Lug)', amount: 195.00, status: 'paid' },
+            { id: 18, date: '2025-06-16', cat: 'tasse', desc: 'IMU Acconto 2025', amount: 334.00, status: 'paid' },
+            { id: 19, date: '2025-06-10', cat: 'straordinaria', desc: 'Rimozione Amianto', amount: 570.00, status: 'paid' },
+            { id: 20, date: '2025-05-31', cat: 'utenze', desc: 'A2A Luce (Apr-Mag)', amount: 89.00, status: 'paid' },
+            { id: 21, date: '2025-05-16', cat: 'ordinaria', desc: 'Rata Condo Ord. 1', amount: 450.00, status: 'paid' },
+            { id: 22, date: '2025-03-31', cat: 'utenze', desc: 'A2A Luce (Feb-Mar)', amount: 94.00, status: 'paid' },
+            { id: 23, date: '2025-01-31', cat: 'utenze', desc: 'A2A Luce (Dic-Gen)', amount: 192.00, status: 'paid' }
+        ];
+
+        // Init Internet (Editabile: lo aggiungo all'array una volta, poi l'utente può modificarlo)
+        let idCounter = 100;
+        function initInternet() {
+            for(let y=2025; y<=2026; y++) {
+                let start = (y===2025)?9:1;
+                for(let m=start; m<=12; m++) {
+                    transactions.push({
+                        id: idCounter++,
+                        date: `${y}-${m.toString().padStart(2,'0')}-27`,
+                        cat: 'utenze', desc: `Internet ${m}/${y}`,
+                        amount: 27.50, status: (y===2025)?'paid':'pending'
+                    });
+                }
+            }
+        }
+        initInternet(); // Run once
+
+        let chart = null;
+
+        // --- RENDER LOGIC ---
+        function render() {
+            const year = document.getElementById('yearFilter').value;
+            const tbody = document.getElementById('trans-body');
+            tbody.innerHTML = "";
+
+            // Sort Date Descending
+            transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            let totalExp = 0;
+            const chartData = { ord:0, str:0, ut:0, tax:0 };
+            
+            // Condo Widget Data
+            let condoRows = [];
+
+            transactions.forEach(t => {
+                const tYear = t.date.split('-')[0];
+                if(year !== 'all' && tYear !== year) return;
+
+                // Calcoli
+                totalExp += t.amount;
+                if(t.cat==='ordinaria') chartData.ord += t.amount;
+                else if(t.cat==='straordinaria') chartData.str += t.amount;
+                else if(t.cat==='tasse') chartData.tax += t.amount;
+                else chartData.ut += t.amount;
+
+                // Collect for Condo Widget
+                if(t.cat.includes('ordinaria') || t.cat.includes('straordinaria')) {
+                    condoRows.push(t);
+                }
+
+                // Table Row
+                let badge = "";
+                if(t.cat==='tasse') badge = `<span class="cat-tag ct-tasse">TASSE</span>`;
+                else if(t.cat==='ordinaria') badge = `<span class="cat-tag ct-ord">CONDO</span>`;
+                else if(t.cat==='straordinaria') badge = `<span class="cat-tag ct-str">STRAORD</span>`;
+                else badge = `<span class="cat-tag ct-ut">UTENZE</span>`;
+
+                let stColor = t.status === 'paid' ? 'text-teal-400' : 'text-red-400';
+                let stText = t.status === 'paid' ? 'PAGATO' : 'DA PAGARE';
+
+                tbody.innerHTML += `
+                <tr>
+                    <td class="font-mono text-xs text-gray-400">${t.date}</td>
+                    <td>${badge}</td>
+                    <td class="font-bold text-white text-sm">${t.desc}</td>
+                    <td class="text-xs font-bold ${stColor}">${stText}</td>
+                    <td class="text-right font-mono text-white text-sm">€ ${t.amount.toFixed(2)}</td>
+                    <td class="text-right">
+                        <span class="action-btn ab-edit" onclick="openModal(${t.id})"><i data-lucide="pencil" class="w-4 h-4"></i></span>
+                        <span class="action-btn ab-del" onclick="deleteTransaction(${t.id})"><i data-lucide="trash-2" class="w-4 h-4"></i></span>
+                    </td>
+                </tr>`;
+            });
+
+            // Update KPI
+            document.getElementById('total-expenses').innerText = `€ ${totalExp.toFixed(2)}`;
+            const gross = 7405.30;
+            document.getElementById('net-operating').innerText = `€ ${(gross - totalExp).toFixed(2)}`;
+
+            updateChart(chartData);
+            renderCondoWidget(condoRows);
+            lucide.createIcons();
+        }
+
+        // --- CONDO WIDGET DYNAMIC ---
+        function renderCondoWidget(rows) {
+            const container = document.getElementById('condo-widget-body');
+            container.innerHTML = "";
+            
+            // Group by Logic (Semplificata per visualizzazione)
+            let html = `<div class="condo-section">`;
+            
+            if(rows.length === 0) {
+                html += `<div class="text-gray-500 text-xs italic">Nessuna spesa condominiale nel periodo selezionato.</div>`;
+            } else {
+                rows.forEach(r => {
+                    let stClass = r.status === 'paid' ? 'paid' : 'pending';
+                    html += `
+                    <div class="cs-row ${stClass}">
+                        <span>${r.desc}</span>
+                        <span>€ ${r.amount.toFixed(2)}</span>
+                    </div>`;
+                });
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        // --- CRUD LOGIC ---
+        function openModal(id = null) {
+            document.getElementById('editModal').style.display = 'flex';
+            if(id) {
+                const t = transactions.find(x => x.id === id);
+                document.getElementById('modalTitle').innerText = "Modifica Spesa";
+                document.getElementById('edit-id').value = t.id;
+                document.getElementById('edit-desc').value = t.desc;
+                document.getElementById('edit-date').value = t.date;
+                document.getElementById('edit-amount').value = t.amount;
+                document.getElementById('edit-cat').value = t.cat;
+                document.getElementById('edit-status').value = t.status;
+            } else {
+                document.getElementById('modalTitle').innerText = "Nuova Spesa";
+                document.getElementById('edit-id').value = "";
+                document.getElementById('edit-desc').value = "";
+                document.getElementById('edit-date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('edit-amount').value = "";
+                document.getElementById('edit-status').value = "pending";
+            }
+        }
+
+        function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+
+        function saveTransaction() {
+            const idVal = document.getElementById('edit-id').value;
+            const t = {
+                id: idVal ? parseInt(idVal) : Date.now(),
+                date: document.getElementById('edit-date').value,
+                desc: document.getElementById('edit-desc').value,
+                amount: parseFloat(document.getElementById('edit-amount').value) || 0,
+                cat: document.getElementById('edit-cat').value,
+                status: document.getElementById('edit-status').value
+            };
+
+            if(idVal) {
+                const idx = transactions.findIndex(x => x.id == idVal);
+                transactions[idx] = t;
+            } else {
+                transactions.push(t);
+            }
+            closeModal();
+            render();
+        }
+
+        function deleteTransaction(id) {
+            if(confirm("Eliminare questa spesa?")) {
+                transactions = transactions.filter(x => x.id !== id);
+                render();
+            }
+        }
+
+        function updateChart(d) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ord', 'Straord', 'Utenze', 'Tasse'],
+                    datasets: [{
+                        data: [d.ord, d.str, d.ut, d.tax],
+                        backgroundColor: ['#818cf8', '#fbbf24', '#2dd4bf', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color:'#94a3b8' } } } }
+            });
+        }
+
+        window.onload = function() { render(); };
+    </script>
+<script id="masotto-sidebar">
+(function(){
+  const PAGES = [
+    ["index.html","Dashboard","layout-dashboard"],
+    ["ANAGRAFICA.html","Anagrafica","id-card"],
+    ["asset.html","Asset","boxes"],
+    ["audit.html","Audit","clipboard-check"],
+    ["manutenzione.html","Manutenzione","wrench"],
+    ["prenotazioni.html","Prenotazioni","calendar"],
+    ["FINANZE.html","Finanze","pie-chart"],
+    ["conto.html","Conto","wallet"],
+    ["consuntivo_25.html","Consuntivo 2025","file-text"],
+    ["sicurezza.html","Sicurezza","shield"]
+  ];
+
+  function purgeOtherAlloggi(){
+    try{
+      const kill = ["nolo","suite","nest","studio","heritage","bassano","chavez","termopili"];
+      Object.keys(localStorage).forEach(k=>{
+        const lk = k.toLowerCase();
+        if(k.startsWith("masotto_")) return;
+        if(kill.some(t=>lk.includes(t))) localStorage.removeItem(k);
+      });
+          window.__MS_SIDEBAR_DONE = true;
+}catch(e){}
+  }
+
+  async function ensureMasterDB(force=false){
+    try{
+      let master = null;
+
+      if(window.MASOTTO_DB) master = window.MASOTTO_DB;
+
+      if(!master){
+        const res = await fetch("masotto_complete_database.json", {cache:"no-store"});
+        if(!res.ok) throw new Error("fetch failed");
+        master = await res.json();
+      }
+
+const map = {
+        "masotto_prop_data": "property_master",
+        "masotto_assets_mobile_db": "assets_mobile",
+        "masotto_structural_assets_db": "structural_assets",
+        "masotto_finance_db": "finances",
+        "masotto_booking_db": "bookings",
+        "masotto_maint_db": "tickets",
+        "masotto_insurance_db": "insurance",
+        "masotto_utilities_db": "utilities",
+        "masotto_contacts_db": "contacts",
+        "masotto_maintenance_presets_db": "maintenance_presets"
+      };
+
+      purgeOtherAlloggi();
+
+      for(const [lsKey, section] of Object.entries(map)){
+        const existing = localStorage.getItem(lsKey);
+        const isEmpty = !existing || existing==="null" || existing==="[]" || existing==="{}";
+        if(force || isEmpty){
+          localStorage.setItem(lsKey, JSON.stringify(master[section] ?? []));
+        }
+      }
+      localStorage.setItem("active_property", "Masotto Terrace View");
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function mountSidebar(){
+  // idempotent mount (safe even if scripts load twice)
+  if (window.__MS_SIDEBAR_DONE && document.getElementById("msSidebar")) return;
+  try{
+    // remove legacy sidebars, but NEVER remove #msSidebar
+    document.querySelectorAll("aside.sidebar, div.sidebar, #sidebar, [data-legacy-sidebar=\"1\"]").forEach(el=>el.remove());
+    document.querySelectorAll(".ms-sidebar").forEach(el=>{ if(el.id !== "msSidebar") el.remove(); });
+  }catch(e){}
+  if (document.getElementById("msSidebar")) { window.__MS_SIDEBAR_DONE = true; return; }
+
+  const path = (location.pathname.split("/").pop() || "index.html");
+    const nav = PAGES.map(([href,label,icon])=>{
+      const active = (href.toLowerCase() === path.toLowerCase()) ? "active" : "";
+      return `<a class="${active}" href="${href}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></a>`;
+    }).join("");
+
+    const sidebar = document.createElement("aside");
+    sidebar.className="ms-sidebar";
+    sidebar.id="msSidebar";
+    sidebar.innerHTML = `
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+             style="background:linear-gradient(135deg,#004D54,#10b981)">2M</div>
+        <div>
+          <div class="text-white font-bold leading-tight">Masotto Terrace</div>
+          <div class="ms-chip">single-property mode</div>
+        </div>
+      </div>
+      <nav class="ms-nav space-y-1">${nav}</nav>
+      <div class="mt-6 p-3 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+        <div class="text-[11px] text-gray-400">Data source</div>
+        <div class="text-[12px] text-white font-semibold">masotto_complete_database.json</div>
+        <button id="msSyncBtn" class="mt-3 w-full text-xs font-bold px-3 py-2 rounded-lg"
+          style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.35);color:#a7f3d0;">
+          Sync DB
+        </button>
+      </div>
+    `;
+
+    // main wrapper
+    const mainWrap = document.createElement("div");
+    mainWrap.className = "ms-main";
+    while(document.body.firstChild){
+      mainWrap.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(sidebar);
+    document.body.appendChild(mainWrap);
+
+    // mobile topbar + toggle
+    const topbar = document.createElement("div");
+    topbar.className="ms-topbar p-3 flex items-center justify-between lg:hidden";
+    topbar.innerHTML = `
+      <button id="msToggle" class="px-3 py-2 rounded-lg text-white text-xs font-bold"
+        style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);">
+        ☰ Menu
+      </button>
+      <div class="text-white font-bold text-sm">Masotto Terrace</div>
+      <div style="width:64px"></div>
+    `;
+    mainWrap.prepend(topbar);
+
+    document.getElementById("msToggle").addEventListener("click", ()=>{
+      sidebar.classList.toggle("open");
+    });
+    document.getElementById("msSyncBtn").addEventListener("click", async ()=>{
+      await ensureMasterDB(true);
+      location.reload();
+    });
+  }
+
+  // boot
+  window.__ensureMasottoDB = ensureMasterDB;
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    await ensureMasterDB(false);
+    mountSidebar();
+    if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  });
+})();
+</script>
+    
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// --- FINANZE: LIVE CONTROL (localStorage first, fallback to window.MASOTTO_DB) ---
+function eur(n){
+  const v = Number(n||0);
+  return v.toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+}
+function normStr(s){ return String(s||'').trim(); }
+function parseISOorDMY(s){
+  if(!s) return null;
+  const t = String(s).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(t)) return new Date(t+'T00:00:00');
+  const m = t.match(/^(\d{2})\.(\d{2})\.(\d{2,4})$/);
+  if(m){
+    let y = m[3];
+    y = (y.length===2 ? ('20'+y) : y);
+    return new Date(y+'-'+m[2]+'-'+m[1]+'T00:00:00');
+  }
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? null : d;
+}
+function yyyymm(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  return y+'-'+m;
+}
+function loadDB(key, fallbackArr){
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return fallbackArr || [];
+}
+function isExcludedTaxRow(row){
+  const c = (row.category||'').toString().toLowerCase();
+  const d = (row.description||'').toString().toLowerCase();
+  return c.includes('imu') || c.includes('tari') || d.includes('imu') || d.includes('tari');
+}
+function numAny(x){
+  if(x===null||x===undefined||x==='') return 0;
+  // accetta "1.234,56" e "1234,56"
+  const s = String(x).replace(/\./g,'').replace(',', '.');
+  const n = Number(s);
+  return isNaN(n)?0:n;
+}
+function toBookingIncome(b){
+  const dt = parseISOorDMY(b.check_in || b.Arrivo || b.arrivo || b.date);
+  const guest = normStr(b.guest || b.Ospite);
+  const src = normStr(b.source || b.Portale || b.portal || 'Prenotazioni');
+  const gross = numAny(b.gross_eur ?? b.Prezzo ?? b.prezzo ?? 0);
+  const comm = numAny(b.commission_eur ?? b['Commissione inclusa'] ?? b.commissione ?? 0);
+  const city = numAny(b.city_tax_eur ?? b['City tax'] ?? b.citytax ?? 0);
+  const netRaw = (b.net_eur ?? b['Introito netto'] ?? b.introito_netto);
+  const net = (netRaw===undefined || netRaw===null || netRaw==='') ? NaN : numAny(netRaw);
+  const amount = (isNaN(net) ? Math.max(0, gross - comm - city) : net);
+  return {
+    date: dt,
+    kind: 'IN',
+    detail: guest ? ('Prenotazione: '+guest) : (b.id ? ('Prenotazione #'+b.id) : 'Prenotazione'),
+    category: src,
+    amount: amount,
+    meta: {gross, comm, city}
+  };
+}
+function toExpenseMovement(f){
+  const dt = parseISOorDMY(f.date);
+  return {
+    date: dt,
+    kind: 'OUT',
+    detail: normStr(f.description || f.Dettaglio || 'Spesa'),
+    category: normStr(f.category || f.Categoria || ''),
+    amount: numAny(f.amount_eur ?? f.amount ?? 0)
+  };
+}
+
+let MOVES = [];
+let incomeTotal=0, expenseTotal=0, cedolare=0, netTotal=0;
+
+function compute(){
+  const fallback = (window.MASOTTO_DB || {});
+  const bookings = loadDB('masotto_booking_db', fallback.bookings || []);
+  const finances = loadDB('masotto_finance_db', fallback.finances || []);
+
+  const inMoves = (bookings||[]).map(toBookingIncome).filter(m=>m.date);
+  const outMoves = (finances||[]).filter(f=>!isExcludedTaxRow(f)).map(toExpenseMovement).filter(m=>m.date);
+
+  MOVES = inMoves.concat(outMoves).sort((a,b)=>b.date-a.date);
+
+  const cityTaxTotal = inMoves.reduce((s,m)=>s+(m.meta?.city||0),0);
+  incomeTotal = inMoves.reduce((s,m)=>s+m.amount,0);
+  expenseTotal = outMoves.reduce((s,m)=>s+m.amount,0);
+
+  // cedolare: 21% su imponibile (entrate al netto di eventuale city tax se presente)
+  const imponibile = Math.max(0, incomeTotal - cityTaxTotal);
+  cedolare = imponibile * 0.21;
+  netTotal = incomeTotal - expenseTotal - cedolare;
+
+  document.getElementById('kpi-income').textContent = eur(incomeTotal);
+  document.getElementById('kpi-income-foot').textContent = inMoves.length+' prenotazioni';
+  document.getElementById('kpi-expense').textContent = eur(expenseTotal);
+  document.getElementById('kpi-expense-foot').textContent = outMoves.length+' movimenti';
+  document.getElementById('kpi-tax').textContent = eur(cedolare);
+  document.getElementById('kpi-tax-foot').textContent = 'imponibile: '+eur(imponibile);
+  document.getElementById('kpi-net').textContent = eur(netTotal);
+
+  renderConsuntivo(imponibile);
+  renderYearOptions();
+  renderMovements();
+  renderCharts(inMoves, outMoves);
+}
+
+function renderConsuntivo(imponibile){
+  const rows = [
+    {k:'Entrate (prenotazioni)', v: incomeTotal, n:'usa Introito netto se presente, altrimenti Prezzo - commissione - city tax'},
+    {k:'Uscite operative (escl. IMU/TARI)', v: -expenseTotal, n:'utenze, manutenzioni, servizi, acquisti'},
+    {k:'Accantonamento Cedolare (21%)', v: -cedolare, n:'calcolato su imponibile '+eur(imponibile)},
+    {k:'Risultato operativo stimato', v: netTotal, n:'entrate - uscite - cedolare'}
+  ];
+  const tb = document.getElementById('consuntivoRows');
+  tb.innerHTML = rows.map(r=>
+    '<tr><td>'+r.k+'</td><td class="num">'+eur(r.v)+'</td><td>'+r.n+'</td></tr>'
+  ).join('');
+}
+
+function renderYearOptions(){
+  const years = Array.from(new Set(MOVES.map(m=>m.date.getFullYear()))).sort((a,b)=>b-a);
+  const sel = document.getElementById('fYear');
+  sel.innerHTML = ['<option value="ALL">Tutti gli anni</option>'].concat(years.map(y=>'<option value="'+y+'">'+y+'</option>')).join('');
+}
+
+function renderMovements(){
+  const q = (document.getElementById('q').value || '').toLowerCase();
+  const ft = document.getElementById('fType').value;
+  const fy = document.getElementById('fYear').value;
+
+  const out = MOVES.filter(m=>{
+    if(ft !== 'ALL' && m.kind !== ft) return false;
+    if(fy !== 'ALL' && String(m.date.getFullYear()) !== fy) return false;
+    const hay = (m.detail+' '+(m.category||'')).toLowerCase();
+    if(q && !hay.includes(q)) return false;
+    return true;
+  });
+
+  const tb = document.getElementById('movRows');
+  tb.innerHTML = out.map(m=>{
+    const signAmt = (m.kind==='IN' ? m.amount : -m.amount);
+    return '<tr>'+
+      '<td>'+m.date.toLocaleDateString('it-IT')+'</td>'+
+      '<td>'+(m.kind==='IN'?'Entrata':'Uscita')+'</td>'+
+      '<td>'+m.detail+'</td>'+
+      '<td>'+(m.category||'-')+'</td>'+
+      '<td class="num">'+eur(signAmt)+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+let donutChart=null, monthlyChart=null;
+function renderCharts(inMoves, outMoves){
+  if(!window.Chart) return;
+
+  // Donut
+  const donutEl = document.getElementById('chartDonut');
+  if(donutChart) donutChart.destroy();
+  donutChart = new Chart(donutEl, {
+    type: 'doughnut',
+    data: {
+      labels: ['Entrate','Uscite','Cedolare'],
+      datasets: [{ data: [incomeTotal, expenseTotal, cedolare] }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+    }
+  });
+
+  // Monthly
+  const byM = {};
+  for(const m of inMoves){
+    const k = yyyymm(m.date);
+    byM[k] = byM[k] || {i:0,o:0};
+    byM[k].i += m.amount;
+  }
+  for(const m of outMoves){
+    const k = yyyymm(m.date);
+    byM[k] = byM[k] || {i:0,o:0};
+    byM[k].o += m.amount;
+  }
+  const labels = Object.keys(byM).sort();
+  const ins = labels.map(k=>byM[k].i);
+  const outs = labels.map(k=>byM[k].o);
+
+  const mEl = document.getElementById('chartMonthly');
+  if(monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(mEl, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Entrate', data: ins, tension: 0.25 },
+        { label: 'Uscite', data: outs, tension: 0.25 }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(148,163,184,0.15)' } },
+        y: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(148,163,184,0.15)' } }
+      },
+      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+    }
+  });
+}
+
+function scrollToSection(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+window.addEventListener('load', compute);
+</script>
+
+</body>
+</html>

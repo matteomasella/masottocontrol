@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Masotto - Prenotazioni Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-dark: #080c10; --panel-dark: #0f151a; --panel-light: #131b24; --accent-teal: #2dd4bf; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-dark); color: white; margin: 0; }
+        
+        .nav-link { display: flex; items-center; gap: 12px; padding: 10px; border-radius: 8px; color: #94a3b8; text-decoration: none; margin-bottom: 5px; transition: 0.2s; }
+        .nav-link:hover, .nav-link.active { background: rgba(45, 212, 191, 0.1); color: #2dd4bf; }
+        
+        /* Stats Box */
+        .stat-card { background: #0f151a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.2rem; display: flex; flex-direction: column; justify-content: space-between; }
+        .stat-title { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 5px; }
+        .stat-value { font-size: 1.6rem; font-weight: 700; font-family: monospace; letter-spacing: -0.5px; }
+        
+        /* Booking Card */
+        .bk-card { background: linear-gradient(145deg, #131b24, #0f151a); border: 1px solid rgba(255,255,255,0.1); border-left-width: 4px; border-radius: 12px; padding: 1rem; position: relative; transition: 0.2s; }
+        .bk-card:hover { transform: translateY(-2px); border-color: rgba(45, 212, 191, 0.5); }
+        .bk-airbnb { border-left-color: #FF385C; } 
+        .bk-diretta { border-left-color: #10b981; }
+        
+        .netto-row { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .netto-val { font-size: 1.1rem; font-weight: 700; color: #2dd4bf; font-family: monospace; }
+
+        /* Modal & Select */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .modal-box { background: #0f151a; border: 1px solid #2dd4bf; padding: 2rem; border-radius: 16px; width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        
+        input, select { width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; margin-bottom: 10px; }
+        .btn { padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-primary { background: #2dd4bf; color: #00282c; }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
+        
+        .chart-cont { height: 220px; width: 100%; }
+        ::-webkit-scrollbar { width: 6px; background: transparent; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+<style id="masotto-sidebar-css">
+:root{
+  --bg-dark:#0b1220;
+  --panel:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.10);
+  --brand:#004D54;
+  --accent:#2dd4bf;
+}
+body{background:var(--bg-dark);}
+.ms-sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:260px; background:rgba(15,23,42,.96);
+  border-right:1px solid var(--border);
+  padding:20px; z-index:50; overflow:auto;
+}
+.ms-main{margin-left:260px; min-height:100vh;}
+@media (max-width: 900px){
+  .ms-sidebar{transform:translateX(-105%); transition:.2s;}
+  .ms-sidebar.open{transform:translateX(0);}
+  .ms-main{margin-left:0;}
+  .ms-topbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(10px);
+    background:rgba(11,18,32,.75); border-bottom:1px solid var(--border);}
+}
+.ms-nav a{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  color:#94a3b8; font-weight:600; text-decoration:none;
+}
+.ms-nav a:hover{background:rgba(255,255,255,.05); color:#fff;}
+.ms-nav a.active{background:var(--brand); color:var(--accent); border-left:3px solid var(--accent);}
+.ms-chip{font:600 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color:var(--accent); background:rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.25);
+  padding:2px 8px; border-radius:999px; display:inline-block;}
+</style>
+    <script src="masotto_db.js"></script>
+</head>
+<body>
+
+    
+
+    <main class="main">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold">Prenotazioni</h2>
+                <div class="text-sm text-gray-400">Analisi Incassi & Tasse</div>
+            </div>
+            <div class="flex gap-3 items-center">
+                <select id="yearFilter" onchange="filterAndRender()" style="width:auto; margin:0; cursor:pointer;">
+                    <option value="all">Tutti gli Anni</option>
+                    <option value="2025" selected>2025</option>
+                    <option value="2026">2026</option>
+                </select>
+                
+                <input type="file" id="csvInput" hidden onchange="handleImport(this)">
+                <button onclick="document.getElementById('csvInput').click()" class="btn btn-secondary text-sm">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Import CSV
+                </button>
+                
+                <button onclick="openModal()" class="btn btn-primary text-sm">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Aggiungi
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="stat-card border-l-4 border-gray-500">
+                <div class="stat-title">Totale Lordo Incassato</div>
+                <div class="stat-value text-white" id="stat-gross">€ 0</div>
+            </div>
+            <div class="stat-card border-l-4 border-teal-500">
+                <div class="stat-title text-teal-400">Totale Netto Reale</div>
+                <div class="stat-value text-teal-400" id="stat-net">€ 0</div>
+            </div>
+            <div class="stat-card border-l-4 border-purple-500">
+                <div class="stat-title text-purple-400">Tassa Soggiorno (Da Versare)</div>
+                <div class="stat-value text-purple-400" id="stat-tax">€ 0</div>
+                <div class="text-[10px] text-gray-500 mt-1">*Escluso Airbnb</div>
+            </div>
+            <div class="stat-card border-l-4 border-blue-500">
+                <div class="stat-title text-blue-400">Totale Spese Pulizia</div>
+                <div class="stat-value text-blue-400" id="stat-clean">€ 0</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="stat-card">
+                <h3 class="font-bold mb-4 text-white">Andamento Mensile</h3>
+                <div class="chart-cont"><canvas id="trendChart"></canvas></div>
+            </div>
+            <div class="stat-card">
+                <h3 class="font-bold mb-4 text-white">Ripartizione Incasso Lordo</h3>
+                <div class="chart-cont"><canvas id="costChart"></canvas></div>
+            </div>
+        </div>
+
+        <div id="booking-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+    </main>
+
+    <div id="modal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-xl font-bold mb-6 text-white" id="modal-title">Gestione Prenotazione</h3>
+            <input type="hidden" id="bk-id">
+            <div class="grid grid-cols-2 gap-4">
+                <input type="text" id="bk-guest" placeholder="Nome Ospite">
+                <select id="bk-portal"><option value="Diretta">Diretta</option><option value="Airbnb">Airbnb</option><option value="Booking">Booking</option></select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <input type="date" id="bk-in">
+                <input type="date" id="bk-out">
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <input type="number" id="bk-pax" placeholder="Pax" value="2">
+                <input type="number" id="bk-price" placeholder="Prezzo Tot" step="0.01">
+                <input type="number" id="bk-comm" placeholder="Comm." step="0.01">
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveBooking()" class="btn btn-primary w-full justify-center">Salva</button>
+                <button onclick="closeModal()" class="btn btn-secondary w-full justify-center">Annulla</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        let allBookings = [
+            { id: 1, guest: "Gabriela Stempka", checkin: "2025-08-25", checkout: "2025-08-27", price: 142.80, comm: 21.42, portal: "Airbnb", pax: 2 },
+            { id: 2, guest: "Flavio Nacacura", checkin: "2025-08-27", checkout: "2025-09-03", price: 452.50, comm: 0, portal: "Diretta", pax: 1 },
+            { id: 3, guest: "Christie Swainston", checkin: "2025-09-04", checkout: "2025-09-07", price: 441.00, comm: 66.15, portal: "Airbnb", pax: 1 },
+            { id: 4, guest: "Flavio Nakakura (2)", checkin: "2025-09-07", checkout: "2025-09-29", price: 1474.00, comm: 0, portal: "Diretta", pax: 1 },
+            { id: 5, guest: "Edwin Agallanes", checkin: "2025-09-30", checkout: "2025-10-13", price: 917.00, comm: 0, portal: "Diretta", pax: 1 },
+            { id: 6, guest: "Maja Janevska", checkin: "2025-10-16", checkout: "2025-10-26", price: 826.00, comm: 0, portal: "Diretta", pax: 1 },
+            { id: 7, guest: "Irilla Santana", checkin: "2025-10-26", checkout: "2025-11-16", price: 1226.00, comm: 0, portal: "Diretta", pax: 1 },
+            { id: 8, guest: "Irilla Santana (2)", checkin: "2025-11-16", checkout: "2025-11-30", price: 900.00, comm: 0, portal: "Diretta", pax: 1 },
+            { id: 9, guest: "Sarà Dario", checkin: "2025-12-04", checkout: "2025-12-21", price: 1026.00, comm: 0, portal: "Diretta", pax: 1 },
+            { id: 10, guest: "Sarà Dario (2)", checkin: "2026-01-12", checkout: "2026-01-26", price: 1428.00, comm: 0, portal: "Diretta", pax: 1 }
+        ];
+
+        let charts = {};
+
+        // --- CALCOLO ---
+        function calculate(b) {
+            const start = new Date(b.checkin);
+            const end = new Date(b.checkout);
+            const nights = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+            const clean = nights >= 14 ? 80 : 45;
+            const tax = nights * b.pax * 6.30;
+            
+            const isOTA = b.portal === "Airbnb" || b.portal === "Booking";
+            
+            // Netto Logic
+            // OTA: Price - Comm - Clean (Tax versata da portale, non incide)
+            // Diretta: Price - Clean - Tax (Tax incassata e da versare, quindi incide sul netto)
+            const net = isOTA ? (b.price - b.comm - clean) : (b.price - clean - tax);
+            const taxToPay = isOTA ? 0 : tax; // Solo le dirette vanno nel box "Da Versare"
+
+            return { nights, clean, tax, net, taxToPay, isOTA };
+        }
+
+        // --- RENDER & FILTER ---
+        function filterAndRender() {
+            const year = document.getElementById('yearFilter').value;
+            const filtered = allBookings.filter(b => year === 'all' || b.checkin.startsWith(year));
+            
+            // Aggiorna Stats Box
+            let totGross=0, totNet=0, totTaxPay=0, totClean=0;
+            filtered.forEach(b => {
+                const c = calculate(b);
+                totGross += b.price;
+                totNet += c.net;
+                totTaxPay += c.taxToPay;
+                totClean += c.clean;
+            });
+
+            document.getElementById('stat-gross').innerText = `€ ${totGross.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-net').innerText = `€ ${totNet.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-tax').innerText = `€ ${totTaxPay.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-clean').innerText = `€ ${totClean.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
+
+            // Render Grid
+            const grid = document.getElementById('booking-grid');
+            grid.innerHTML = "";
+            filtered.sort((a,b) => new Date(a.checkin) - new Date(b.checkin)).forEach(b => {
+                const c = calculate(b);
+                const taxLabel = c.isOTA ? `€ ${c.tax.toFixed(2)} (Airbnb)` : `<span class="text-purple-400">€ ${c.tax.toFixed(2)} (Tu)</span>`;
+                
+                grid.innerHTML += `
+                <div class="bk-card ${c.isOTA?'bk-airbnb':'bk-diretta'}">
+                    <div class="flex justify-between mb-3">
+                        <div><div class="font-bold text-white text-lg">${b.guest}</div><div class="text-xs text-gray-400">${b.checkin} ➝ ${b.checkout} (${c.nights}n)</div></div>
+                        <div class="text-[10px] font-bold uppercase px-2 py-1 rounded bg-white/10 h-fit ${c.isOTA?'text-[#FF385C]':'text-[#10b981]'}">${b.portal}</div>
+                    </div>
+                    <div class="space-y-1 text-sm text-gray-400">
+                        <div class="flex justify-between"><span>Lordo</span><span class="text-white font-mono">€ ${b.price.toFixed(2)}</span></div>
+                        <div class="flex justify-between"><span>Pulizia</span><span class="text-blue-400 font-mono">- € ${c.clean.toFixed(2)}</span></div>
+                        <div class="flex justify-between"><span>Tassa (${b.pax}p)</span><span class="font-mono text-xs">${taxLabel}</span></div>
+                        ${b.comm>0 ? `<div class="flex justify-between"><span>Comm.</span><span class="text-red-400 font-mono">- € ${b.comm.toFixed(2)}</span></div>`:''}
+                    </div>
+                    <div class="netto-row"><span>NETTO</span><span class="netto-val">€ ${c.net.toFixed(2)}</span></div>
+                    <div class="flex justify-end gap-2 mt-3">
+                        <button onclick="openModal(${b.id})" class="p-1 hover:text-white text-gray-500"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        <button onclick="deleteBooking(${b.id})" class="p-1 hover:text-red-500 text-gray-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>`;
+            });
+            lucide.createIcons();
+            updateCharts(filtered);
+        }
+
+        // --- CHARTS ---
+        function updateCharts(data) {
+            // Trend
+            const months = {};
+            data.forEach(b => {
+                const m = b.checkin.substring(0,7);
+                if(!months[m]) months[m] = {gross:0, net:0};
+                months[m].gross += b.price;
+                months[m].net += calculate(b).net;
+            });
+            const labels = Object.keys(months).sort();
+            
+            const ctxT = document.getElementById('trendChart').getContext('2d');
+            if(charts.trend) charts.trend.destroy();
+            charts.trend = new Chart(ctxT, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label:'Lordo', data: labels.map(l=>months[l].gross), borderColor:'#94a3b8', borderDash:[5,5], tension:0.3 },
+                        { label:'Netto', data: labels.map(l=>months[l].net), borderColor:'#2dd4bf', backgroundColor:'rgba(45,212,191,0.1)', fill:true, tension:0.3 }
+                    ]
+                },
+                options: { responsive:true, maintainAspectRatio:false, scales:{x:{grid:{display:false}}, y:{grid:{color:'#334155'}}} }
+            });
+
+            // Costi
+            let sums = { net:0, clean:0, tax:0, comm:0 };
+            data.forEach(b => { const c=calculate(b); sums.net+=c.net; sums.clean+=c.clean; sums.tax+=c.taxToPay; sums.comm+=b.comm; });
+            
+            const ctxC = document.getElementById('costChart').getContext('2d');
+            if(charts.cost) charts.cost.destroy();
+            charts.cost = new Chart(ctxC, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Netto', 'Pulizie', 'Tasse (Dir)', 'Comm.'],
+                    datasets: [{ data: [sums.net, sums.clean, sums.tax, sums.comm], backgroundColor: ['#2dd4bf', '#3b82f6', '#a855f7', '#fb923c'], borderWidth:0 }]
+                },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{color:'white'}}} }
+            });
+        }
+
+        // --- IMPORT CSV ---
+        function handleImport(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').slice(1); // Skip header
+                rows.forEach(row => {
+                    const cols = row.split(','); // Assumes simple CSV
+                    if(cols.length >= 5) {
+                        allBookings.push({
+                            id: Date.now() + Math.random(),
+                            guest: cols[0].trim(),
+                            checkin: cols[1].trim(), // Format YYYY-MM-DD
+                            checkout: cols[2].trim(),
+                            price: parseFloat(cols[3]),
+                            comm: parseFloat(cols[4] || 0),
+                            portal: cols[5]?.trim() || "Diretta",
+                            pax: parseInt(cols[6] || 2)
+                        });
+                    }
+                });
+                alert("Importazione completata!");
+                filterAndRender();
+            };
+            reader.readAsText(file);
+        }
+
+        // --- CRUD ---
+        function openModal(id){
+            document.getElementById('modal').style.display='flex';
+            if(id){
+                const b = allBookings.find(x=>x.id===id);
+                document.getElementById('bk-id').value=b.id;
+                document.getElementById('bk-guest').value=b.guest;
+                document.getElementById('bk-in').value=b.checkin;
+                // ... fill others
+            } else {
+                document.getElementById('bk-id').value="";
+                // clear inputs
+            }
+        }
+        function closeModal(){ document.getElementById('modal').style.display='none'; }
+        function saveBooking(){
+            // Simplified save logic for demo
+            const guest = document.getElementById('bk-guest').value;
+            if(guest) {
+                allBookings.push({
+                    id: Date.now(),
+                    guest: guest,
+                    checkin: document.getElementById('bk-in').value,
+                    checkout: document.getElementById('bk-out').value,
+                    price: parseFloat(document.getElementById('bk-price').value),
+                    comm: parseFloat(document.getElementById('bk-comm').value),
+                    portal: document.getElementById('bk-portal').value,
+                    pax: parseInt(document.getElementById('bk-pax').value)
+                });
+                closeModal();
+                filterAndRender();
+            }
+        }
+        function deleteBooking(id){ if(confirm("Eliminare?")) { allBookings=allBookings.filter(x=>x.id!==id); filterAndRender(); } }
+
+        window.onload = filterAndRender;
+    </script>
+<script id="masotto-sidebar">
+(function(){
+  const PAGES = [
+    ["index.html","Dashboard","layout-dashboard"],
+    ["ANAGRAFICA.html","Anagrafica","id-card"],
+    ["asset.html","Asset","boxes"],
+    ["audit.html","Audit","clipboard-check"],
+    ["manutenzione.html","Manutenzione","wrench"],
+    ["prenotazioni.html","Prenotazioni","calendar"],
+    ["FINANZE.html","Finanze","pie-chart"],
+    ["conto.html","Conto","wallet"],
+    ["consuntivo_25.html","Consuntivo 2025","file-text"],
+    ["sicurezza.html","Sicurezza","shield"]
+  ];
+
+  function purgeOtherAlloggi(){
+    try{
+      const kill = ["nolo","suite","nest","studio","heritage","bassano","chavez","termopili"];
+      Object.keys(localStorage).forEach(k=>{
+        const lk = k.toLowerCase();
+        if(k.startsWith("masotto_")) return;
+        if(kill.some(t=>lk.includes(t))) localStorage.removeItem(k);
+      });
+          window.__MS_SIDEBAR_DONE = true;
+}catch(e){}
+  }
+
+  async function ensureMasterDB(force=false){
+    try{
+      let master = null;
+
+      if(window.MASOTTO_DB) master = window.MASOTTO_DB;
+
+      if(!master){
+        const res = await fetch("masotto_complete_database.json", {cache:"no-store"});
+        if(!res.ok) throw new Error("fetch failed");
+        master = await res.json();
+      }
+
+const map = {
+        "masotto_prop_data": "property_master",
+        "masotto_assets_mobile_db": "assets_mobile",
+        "masotto_structural_assets_db": "structural_assets",
+        "masotto_finance_db": "finances",
+        "masotto_booking_db": "bookings",
+        "masotto_maint_db": "tickets",
+        "masotto_insurance_db": "insurance",
+        "masotto_utilities_db": "utilities",
+        "masotto_contacts_db": "contacts",
+        "masotto_maintenance_presets_db": "maintenance_presets"
+      };
+
+      purgeOtherAlloggi();
+
+      for(const [lsKey, section] of Object.entries(map)){
+        const existing = localStorage.getItem(lsKey);
+        const isEmpty = !existing || existing==="null" || existing==="[]" || existing==="{}";
+        if(force || isEmpty){
+          localStorage.setItem(lsKey, JSON.stringify(master[section] ?? []));
+        }
+      }
+      localStorage.setItem("active_property", "Masotto Terrace View");
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function mountSidebar(){
+  // idempotent mount (safe even if scripts load twice)
+  if (window.__MS_SIDEBAR_DONE && document.getElementById("msSidebar")) return;
+  try{
+    // remove legacy sidebars, but NEVER remove #msSidebar
+    document.querySelectorAll("aside.sidebar, div.sidebar, #sidebar, [data-legacy-sidebar=\"1\"]").forEach(el=>el.remove());
+    document.querySelectorAll(".ms-sidebar").forEach(el=>{ if(el.id !== "msSidebar") el.remove(); });
+  }catch(e){}
+  if (document.getElementById("msSidebar")) { window.__MS_SIDEBAR_DONE = true; return; }
+
+  const path = (location.pathname.split("/").pop() || "index.html");
+    const nav = PAGES.map(([href,label,icon])=>{
+      const active = (href.toLowerCase() === path.toLowerCase()) ? "active" : "";
+      return `<a class="${active}" href="${href}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></a>`;
+    }).join("");
+
+    const sidebar = document.createElement("aside");
+    sidebar.className="ms-sidebar";
+    sidebar.id="msSidebar";
+    sidebar.innerHTML = `
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+             style="background:linear-gradient(135deg,#004D54,#10b981)">2M</div>
+        <div>
+          <div class="text-white font-bold leading-tight">Masotto Terrace</div>
+          <div class="ms-chip">single-property mode</div>
+        </div>
+      </div>
+      <nav class="ms-nav space-y-1">${nav}</nav>
+      <div class="mt-6 p-3 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+        <div class="text-[11px] text-gray-400">Data source</div>
+        <div class="text-[12px] text-white font-semibold">masotto_complete_database.json</div>
+        <button id="msSyncBtn" class="mt-3 w-full text-xs font-bold px-3 py-2 rounded-lg"
+          style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.35);color:#a7f3d0;">
+          Sync DB
+        </button>
+      </div>
+    `;
+
+    // main wrapper
+    const mainWrap = document.createElement("div");
+    mainWrap.className = "ms-main";
+    while(document.body.firstChild){
+      mainWrap.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(sidebar);
+    document.body.appendChild(mainWrap);
+
+    // mobile topbar + toggle
+    const topbar = document.createElement("div");
+    topbar.className="ms-topbar p-3 flex items-center justify-between lg:hidden";
+    topbar.innerHTML = `
+      <button id="msToggle" class="px-3 py-2 rounded-lg text-white text-xs font-bold"
+        style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);">
+        ☰ Menu
+      </button>
+      <div class="text-white font-bold text-sm">Masotto Terrace</div>
+      <div style="width:64px"></div>
+    `;
+    mainWrap.prepend(topbar);
+
+    document.getElementById("msToggle").addEventListener("click", ()=>{
+      sidebar.classList.toggle("open");
+    });
+    document.getElementById("msSyncBtn").addEventListener("click", async ()=>{
+      await ensureMasterDB(true);
+      location.reload();
+    });
+  }
+
+  // boot
+  window.__ensureMasottoDB = ensureMasterDB;
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    await ensureMasterDB(false);
+    mountSidebar();
+    if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  });
+})();
+</script>
+    
+</body>
+</html>

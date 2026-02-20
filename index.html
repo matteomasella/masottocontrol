@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masotto - Control Room</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --bg-dark: #080c10; --panel-dark: #0f151a; --panel-light: #131b24; --accent-teal: #2dd4bf; --accent-gold: #f59e0b; --accent-blue: #3b82f6; --accent-red: #ef4444; --border: rgba(255,255,255,0.1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-dark); color: white; margin: 0; height: 100vh; overflow: hidden; }
+        .main { flex: 1; overflow-y: auto; padding: 2rem; background: radial-gradient(circle at top right, #112a2e 0%, #080c10 40%); }
+        .nav-link { display: flex; items-center; gap: 12px; padding: 10px; border-radius: 8px; color: #94a3b8; text-decoration: none; margin-bottom: 5px; font-size: 0.9rem; font-weight: 500; }
+        .nav-link.active { background: rgba(45, 212, 191, 0.1); color: var(--accent-teal); border-left: 3px solid var(--accent-teal); }
+
+        /* MARKET & KPI */
+        .market-box { background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(15, 21, 26, 0.8) 100%); border: 1px solid var(--accent-gold); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; }
+        .market-data { display: flex; gap: 2rem; margin-top: 1rem; }
+        .md-item { flex: 1; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        .kpi-card { background: var(--panel-light); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; position: relative; }
+        .kpi-val { font-size: 1.8rem; font-weight: 800; color: white; margin-top: 5px; }
+        .kpi-lbl { font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; }
+
+        /* DASHBOARD SPLIT */
+        .dash-grid { display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 1.5rem; }
+        .card { background: var(--panel-light); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; max-height: 500px; }
+        .card-h { font-size: 1rem; font-weight: 700; color: white; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+
+        /* ALERT LIST ITEMS */
+        .alert-list { overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 8px; }
+        .alert-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.03); border-left: 3px solid #64748b; transition: 0.2s; }
+        .alert-item:hover { background: rgba(255,255,255,0.05); }
+        
+        .type-exp { border-color: #ef4444; } /* Spese */
+        .type-maint { border-color: #f59e0b; } /* Manutenzione */
+        .type-asset { border-color: #a855f7; } /* Asset Alert */
+        .type-book { border-color: #2dd4bf; } /* Booking */
+
+        .al-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 12px; background: rgba(255,255,255,0.05); }
+        .al-content { flex: 1; }
+        .al-title { font-size: 0.85rem; font-weight: 700; color: white; }
+        .al-sub { font-size: 0.7rem; color: #94a3b8; display: flex; gap: 10px; }
+        .al-val { font-family: monospace; font-weight: 700; font-size: 0.9rem; }
+
+        /* MODAL */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .modal-box { background: #0f151a; border: 1px solid var(--accent-gold); padding: 2rem; border-radius: 16px; width: 500px; }
+        input { width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; margin-bottom: 10px; }
+
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+<style id="masotto-sidebar-css">
+:root{
+  --bg-dark:#0b1220;
+  --panel:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.10);
+  --brand:#004D54;
+  --accent:#2dd4bf;
+}
+body{background:var(--bg-dark);}
+.ms-sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:260px; background:rgba(15,23,42,.96);
+  border-right:1px solid var(--border);
+  padding:20px; z-index:50; overflow:auto;
+}
+.ms-main{margin-left:260px; min-height:100vh;}
+@media (max-width: 900px){
+  .ms-sidebar{transform:translateX(-105%); transition:.2s;}
+  .ms-sidebar.open{transform:translateX(0);}
+  .ms-main{margin-left:0;}
+  .ms-topbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(10px);
+    background:rgba(11,18,32,.75); border-bottom:1px solid var(--border);}
+}
+.ms-nav a{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  color:#94a3b8; font-weight:600; text-decoration:none;
+}
+.ms-nav a:hover{background:rgba(255,255,255,.05); color:#fff;}
+.ms-nav a.active{background:var(--brand); color:var(--accent); border-left:3px solid var(--accent);}
+.ms-chip{font:600 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color:var(--accent); background:rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.25);
+  padding:2px 8px; border-radius:999px; display:inline-block;}
+</style>
+    <script src="masotto_db.js"></script>
+</head>
+<body>
+    <div>
+        
+
+        <main class="main">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-white">Control Room</h2>
+                    <div class="text-sm text-gray-400">Analisi Mercato, Finanziaria e Operativa</div>
+                </div>
+                <button onclick="openPropModal()" class="bg-white/10 border border-white/20 text-white px-3 py-1 rounded text-xs hover:bg-white/20 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-3 h-3"></i> Configura Immobile
+                </button>
+            </div>
+
+            <div class="market-box">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="bg-amber-500 text-black font-bold px-2 py-1 rounded text-xs">ARGONNE / CITTÀ STUDI (M4)</span>
+                        <h3 class="text-xl font-bold text-white mt-2">Valutazione Immobiliare 2026</h3>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-400">Valore Attuale Stimato</div>
+                        <div class="text-2xl font-bold text-amber-400" id="mkt-val">€ 0</div>
+                        <div class="text-xs text-green-400" id="mkt-gain">+0%</div>
+                    </div>
+                </div>
+                <div class="market-data">
+                    <div class="md-item">
+                        <div class="text-xs text-gray-400 uppercase">Prezzo Vendita (Zona)</div>
+                        <div class="text-lg font-bold text-white">€ 5.950 / mq</div>
+                    </div>
+                    <div class="md-item border-amber-500/30 bg-amber-500/10">
+                        <div class="text-xs text-amber-200 uppercase">Tuo ADR (Reale)</div>
+                        <div class="text-lg font-bold text-amber-400" id="my-adr">€ 0</div>
+                    </div>
+                    <div class="md-item">
+                        <div class="text-xs text-gray-400 uppercase">Target Competitor</div>
+                        <div class="text-lg font-bold text-white">€ 128 / notte</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi-card border-l-4 border-teal-500"><div class="kpi-lbl">Saldo Netto (Cassa)</div><div class="kpi-val text-teal-400" id="kpi-bal">€ 0</div></div>
+                <div class="kpi-card border-l-4 border-blue-500"><div class="kpi-lbl">Entrate Nette</div><div class="kpi-val" id="kpi-rev">€ 0</div></div>
+                <div class="kpi-card border-l-4 border-red-500"><div class="kpi-lbl">Uscite Totali</div><div class="kpi-val text-red-400" id="kpi-exp">€ 0</div></div>
+                <div class="kpi-card border-l-4 border-purple-500"><div class="kpi-lbl">Notti Vendute</div><div class="kpi-val text-purple-400" id="kpi-nights">0</div></div>
+            </div>
+
+            <div class="dash-grid">
+                <div class="card">
+                    <div class="card-h">
+                        <span class="flex items-center gap-2"><i data-lucide="trending-up" class="text-teal-400"></i> Performance vs Mercato</span>
+                    </div>
+                    <div style="flex:1; min-height: 250px;"><canvas id="marketChart"></canvas></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-h">
+                        <span class="flex items-center gap-2"><i data-lucide="bell-ring" class="text-orange-400"></i> Centro Operativo</span>
+                        <span class="text-xs bg-red-500 text-white px-2 py-1 rounded-full" id="alert-count">0</span>
+                    </div>
+                    
+                    <div class="flex gap-2 text-xs mb-3 border-b border-white/10 pb-2">
+                        <span class="text-gray-400 font-bold uppercase">Legenda:</span>
+                        <span class="text-red-400">● Spese/Fisse</span>
+                        <span class="text-amber-400">● Manutenzione</span>
+                        <span class="text-purple-400">● Asset</span>
+                        <span class="text-teal-400">● Booking</span>
+                    </div>
+
+                    <div id="alert-list" class="alert-list">
+                        <div class="text-sm text-gray-500 italic text-center mt-10">Tutto tranquillo. Nessuna attività in sospeso.</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="propModal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-xl font-bold text-amber-400 mb-4">Dati Immobile</h3>
+            <label class="text-xs text-gray-400">Prezzo Acquisto (€)</label><input type="number" id="p-price" value="230000">
+            <label class="text-xs text-gray-400">Anno Acquisto</label><input type="number" id="p-year" value="2023">
+            <label class="text-xs text-gray-400">Metri Quadri</label><input type="number" id="p-mq" value="42">
+            <button onclick="saveProp()" class="w-full bg-amber-500 text-black font-bold p-3 rounded mt-4">Salva</button>
+            <button onclick="document.getElementById('propModal').style.display='none'" class="w-full text-gray-400 mt-2 text-sm">Annulla</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATI DEFAULT (Se LocalStorage Vuoto) ---
+        const MARKET_DATA = { priceMq: 5950, targetAdr: 128, trend: [110, 115, 125, 140, 135, 120] };
+        let propData = { price: 350000, year: 2020, mq: 65 };
+
+        // Keys
+        const KEYS = { BK: "masotto_booking_db", FN: "masotto_finance_db", MN: "masotto_maint_db", AS: "masotto_audit_db" };
+
+        function init() {
+            // Load Prop Data
+            const p = localStorage.getItem("masotto_prop_data");
+            if(p) propData = JSON.parse(p);
+
+            // Load All DBs (Empty arrays if null to avoid errors)
+            const bookings = JSON.parse(localStorage.getItem(KEYS.BK)) || [];
+            const finances = JSON.parse(localStorage.getItem(KEYS.FN)) || [];
+            const tickets = JSON.parse(localStorage.getItem(KEYS.MN)) || [];
+            const assets = JSON.parse(localStorage.getItem(KEYS.AS)) || [];
+
+            calcDashboard(bookings, finances);
+            renderAlerts(bookings, finances, tickets, assets);
+            lucide.createIcons();
+        }
+
+        function calcDashboard(bookings, finances) {
+            let totNet = 0, totNights = 0, totGross = 0;
+            bookings.forEach(b => { totNet += (b.net||0); totNights += (parseInt(b.n)||0); totGross += (b.price||0); });
+            
+            let totExp = 0;
+            finances.forEach(f => { if(f.status === 'paid') totExp += (f.amount||0); });
+
+            const realAdr = totNights > 0 ? (totGross / totNights) : 0;
+            const currentVal = propData.mq * MARKET_DATA.priceMq;
+            const gain = ((currentVal - propData.price) / propData.price) * 100;
+
+            document.getElementById('kpi-bal').innerText = `€ ${(totNet - totExp).toLocaleString('it-IT',{maximumFractionDigits:0})}`;
+            document.getElementById('kpi-rev').innerText = `€ ${totNet.toLocaleString('it-IT',{maximumFractionDigits:0})}`;
+            document.getElementById('kpi-exp').innerText = `€ ${totExp.toLocaleString('it-IT',{maximumFractionDigits:0})}`;
+            document.getElementById('kpi-nights').innerText = totNights;
+            
+            document.getElementById('mkt-val').innerText = `€ ${currentVal.toLocaleString('it-IT')}`;
+            document.getElementById('mkt-gain').innerText = `${gain > 0 ? '+' : ''}${gain.toFixed(1)}% vs ${propData.year}`;
+            document.getElementById('my-adr').innerText = `€ ${realAdr.toFixed(0)}`;
+
+            renderChart(realAdr);
+        }
+
+        function renderAlerts(bookings, finances, tickets, assets) {
+            const list = document.getElementById('alert-list');
+            list.innerHTML = "";
+            let alerts = [];
+            const today = new Date();
+
+            // 1. SPESE FUTURE / PENDING (Finance)
+            finances.forEach(f => {
+                if(f.status === 'pending') {
+                    const d = new Date(f.date);
+                    alerts.push({ type: 'EXP', date: d, title: f.desc, sub: 'In Scadenza', val: `€ ${f.amount}`, sort: d.getTime(), cls: 'type-exp', icon: 'receipt-euro' });
+                }
+            });
+
+            // 2. MANUTENZIONI APERTE (Maintenance)
+            tickets.forEach(t => {
+                if(t.status !== 'done') {
+                    // Check Due Date if exists
+                    const d = t.due ? new Date(t.due.split('/').reverse().join('-')) : new Date(); // Mock date parse if needed
+                    alerts.push({ type: 'MNT', date: d, title: t.title, sub: `Asset: ${t.asset}`, val: t.pri, sort: d.getTime(), cls: 'type-maint', icon: 'hammer' });
+                }
+            });
+
+            // 3. ASSET ALERT (Audit)
+            assets.forEach(a => {
+                const age = (today - new Date(a.date)) / (1000*60*60*24*365);
+                const lifeLeft = a.life - age;
+                if(lifeLeft < 1) { // Meno di 1 anno di vita
+                    alerts.push({ type: 'AST', date: today, title: `Sostituzione ${a.name}`, sub: 'Vita Utile Finita', val: 'CRITICO', sort: 0, cls: 'type-asset', icon: 'alert-triangle' });
+                }
+            });
+
+            // 4. BOOKINGS (In Casa / Arrivo)
+            bookings.forEach(b => {
+                const inDate = new Date(b.in);
+                const outDate = new Date(b.in); outDate.setDate(inDate.getDate() + parseInt(b.n));
+                
+                if (inDate <= today && outDate >= today) {
+                    alerts.push({ type: 'BKG', date: outDate, title: `Ospite: ${b.guest}`, sub: 'Attualmente In Casa', val: 'IN HOUSE', sort: 0, cls: 'type-book', icon: 'home' });
+                } else if (inDate > today) {
+                    alerts.push({ type: 'BKG', date: inDate, title: `Arrivo: ${b.guest}`, sub: `${b.n} notti`, val: b.in, sort: inDate.getTime(), cls: 'type-book', icon: 'calendar-check' });
+                }
+            });
+
+            // SORT BY DATE / URGENCY
+            alerts.sort((a,b) => a.sort - b.sort);
+
+            // RENDER
+            document.getElementById('alert-count').innerText = alerts.length;
+            
+            alerts.forEach(a => {
+                const dateStr = a.date instanceof Date ? a.date.toLocaleDateString() : a.val;
+                let valColor = a.type === 'EXP' ? 'text-red-400' : (a.type === 'BKG' ? 'text-teal-400' : 'text-white');
+
+                list.innerHTML += `
+                <div class="alert-item ${a.cls}">
+                    <div class="flex items-center flex-1">
+                        <div class="al-icon"><i data-lucide="${a.icon}" class="w-4 h-4 text-gray-300"></i></div>
+                        <div class="al-content">
+                            <div class="al-title">${a.title}</div>
+                            <div class="al-sub"><span>${a.sub}</span> <span>• ${dateStr}</span></div>
+                        </div>
+                    </div>
+                    <div class="al-val ${valColor}">${a.val}</div>
+                </div>`;
+            });
+
+            if(alerts.length === 0) list.innerHTML = `<div class="text-sm text-gray-500 italic text-center py-4">Nessun alert attivo.</div>`;
+        }
+
+        function renderChart(myAdr) {
+            const ctx = document.getElementById('marketChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu'],
+                    datasets: [
+                        { label: 'Tuo Prezzo', data: Array(6).fill(myAdr), borderColor: '#2dd4bf', borderDash: [5,5], tension: 0 },
+                        { label: 'Mercato Argonne', data: MARKET_DATA.trend, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', fill: true, tension: 0.4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#ffffff10' } } } }
+            });
+        }
+
+        function openPropModal() { document.getElementById('propModal').style.display='flex'; }
+        function saveProp() {
+            propData.price = parseFloat(document.getElementById('p-price').value);
+            propData.year = parseInt(document.getElementById('p-year').value);
+            propData.mq = parseFloat(document.getElementById('p-mq').value);
+            localStorage.setItem("masotto_prop_data", JSON.stringify(propData));
+            document.getElementById('propModal').style.display='none';
+            init(); // Reload
+        }
+
+        window.onload = init;
+    </script>
+<script id="masotto-sidebar">
+(function(){
+  const PAGES = [
+    ["index.html","Dashboard","layout-dashboard"],
+    ["ANAGRAFICA.html","Anagrafica","id-card"],
+    ["asset.html","Asset","boxes"],
+    ["audit.html","Audit","clipboard-check"],
+    ["manutenzione.html","Manutenzione","wrench"],
+    ["prenotazioni.html","Prenotazioni","calendar"],
+    ["FINANZE.html","Finanze","pie-chart"],
+    ["conto.html","Conto","wallet"],
+    ["consuntivo_25.html","Consuntivo 2025","file-text"],
+    ["sicurezza.html","Sicurezza","shield"]
+  ];
+
+  function purgeOtherAlloggi(){
+    try{
+      const kill = ["nolo","suite","nest","studio","heritage","bassano","chavez","termopili"];
+      Object.keys(localStorage).forEach(k=>{
+        const lk = k.toLowerCase();
+        if(k.startsWith("masotto_")) return;
+        if(kill.some(t=>lk.includes(t))) localStorage.removeItem(k);
+      });
+          window.__MS_SIDEBAR_DONE = true;
+}catch(e){}
+  }
+
+  async function ensureMasterDB(force=false){
+    try{
+      let master = null;
+
+      if(window.MASOTTO_DB) master = window.MASOTTO_DB;
+
+      if(!master){
+        const res = await fetch("masotto_complete_database.json", {cache:"no-store"});
+        if(!res.ok) throw new Error("fetch failed");
+        master = await res.json();
+      }
+
+const map = {
+        "masotto_prop_data": "property_master",
+        "masotto_assets_mobile_db": "assets_mobile",
+        "masotto_structural_assets_db": "structural_assets",
+        "masotto_finance_db": "finances",
+        "masotto_booking_db": "bookings",
+        "masotto_maint_db": "tickets",
+        "masotto_insurance_db": "insurance",
+        "masotto_utilities_db": "utilities",
+        "masotto_contacts_db": "contacts",
+        "masotto_maintenance_presets_db": "maintenance_presets"
+      };
+
+      purgeOtherAlloggi();
+
+      for(const [lsKey, section] of Object.entries(map)){
+        const existing = localStorage.getItem(lsKey);
+        const isEmpty = !existing || existing==="null" || existing==="[]" || existing==="{}";
+        if(force || isEmpty){
+          localStorage.setItem(lsKey, JSON.stringify(master[section] ?? []));
+        }
+      }
+      localStorage.setItem("active_property", "Masotto Terrace View");
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function mountSidebar(){
+  // idempotent mount (safe even if scripts load twice)
+  if (window.__MS_SIDEBAR_DONE && document.getElementById("msSidebar")) return;
+  try{
+    // remove legacy sidebars, but NEVER remove #msSidebar
+    document.querySelectorAll("aside.sidebar, div.sidebar, #sidebar, [data-legacy-sidebar=\"1\"]").forEach(el=>el.remove());
+    document.querySelectorAll(".ms-sidebar").forEach(el=>{ if(el.id !== "msSidebar") el.remove(); });
+  }catch(e){}
+  if (document.getElementById("msSidebar")) { window.__MS_SIDEBAR_DONE = true; return; }
+
+  const path = (location.pathname.split("/").pop() || "index.html");
+    const nav = PAGES.map(([href,label,icon])=>{
+      const active = (href.toLowerCase() === path.toLowerCase()) ? "active" : "";
+      return `<a class="${active}" href="${href}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></a>`;
+    }).join("");
+
+    const sidebar = document.createElement("aside");
+    sidebar.className="ms-sidebar";
+    sidebar.id="msSidebar";
+    sidebar.innerHTML = `
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+             style="background:linear-gradient(135deg,#004D54,#10b981)">2M</div>
+        <div>
+          <div class="text-white font-bold leading-tight">Masotto Terrace</div>
+          <div class="ms-chip">single-property mode</div>
+        </div>
+      </div>
+      <nav class="ms-nav space-y-1">${nav}</nav>
+      <div class="mt-6 p-3 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+        <div class="text-[11px] text-gray-400">Data source</div>
+        <div class="text-[12px] text-white font-semibold">masotto_complete_database.json</div>
+        <button id="msSyncBtn" class="mt-3 w-full text-xs font-bold px-3 py-2 rounded-lg"
+          style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.35);color:#a7f3d0;">
+          Sync DB
+        </button>
+      </div>
+    `;
+
+    // main wrapper
+    const mainWrap = document.createElement("div");
+    mainWrap.className = "ms-main";
+    while(document.body.firstChild){
+      mainWrap.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(sidebar);
+    document.body.appendChild(mainWrap);
+
+    // mobile topbar + toggle
+    const topbar = document.createElement("div");
+    topbar.className="ms-topbar p-3 flex items-center justify-between lg:hidden";
+    topbar.innerHTML = `
+      <button id="msToggle" class="px-3 py-2 rounded-lg text-white text-xs font-bold"
+        style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);">
+        ☰ Menu
+      </button>
+      <div class="text-white font-bold text-sm">Masotto Terrace</div>
+      <div style="width:64px"></div>
+    `;
+    mainWrap.prepend(topbar);
+
+    document.getElementById("msToggle").addEventListener("click", ()=>{
+      sidebar.classList.toggle("open");
+    });
+    document.getElementById("msSyncBtn").addEventListener("click", async ()=>{
+      await ensureMasterDB(true);
+      location.reload();
+    });
+  }
+
+  // boot
+  window.__ensureMasottoDB = ensureMasterDB;
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    await ensureMasterDB(false);
+    mountSidebar();
+    if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  });
+})();
+</script>
+    
+</body>
+</html>

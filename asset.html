@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masotto - Asset & Libretto</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --bg-dark: #080c10; --panel-dark: #0f151a; --panel-light: #131b24; --accent-teal: #2dd4bf; --text-muted: #94a3b8; --border: rgba(255,255,255,0.1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-dark); color: white; margin: 0; height: 100vh; overflow: hidden; }
+        
+        .main { flex: 1; overflow-y: auto; padding: 2rem; background: radial-gradient(circle at top right, #112a2e 0%, #080c10 40%); }
+        
+        .nav-link { display: flex; items-center; gap: 12px; padding: 10px; border-radius: 8px; color: var(--text-muted); text-decoration: none; margin-bottom: 5px; transition: 0.2s; font-size: 0.9rem; font-weight: 500; }
+        .nav-link:hover, .nav-link.active { background: rgba(45, 212, 191, 0.1); color: var(--accent-teal); border-left: 3px solid var(--accent-teal); }
+
+        /* KPI Cards */
+        .stat-card { background: #0f151a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.2rem; position: relative; overflow: hidden; }
+        .stat-title { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 5px; }
+        .stat-value { font-size: 1.6rem; font-weight: 700; font-family: monospace; letter-spacing: -0.5px; }
+
+        /* Asset Card */
+        .asset-card { background: var(--panel-light); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: 0.2s; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        .asset-card:hover { border-color: var(--accent-teal); transform: translateY(-2px); }
+        .asset-card.boiler-card { border-left: 4px solid #f59e0b; }
+        
+        .asset-icon { width: 40px; height: 40px; border-radius: 8px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: var(--accent-teal); margin-bottom: 12px; }
+        .asset-model { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+        .asset-name { font-weight: 700; font-size: 1.1rem; color: white; line-height: 1.2; }
+        
+        .sn-box { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; padding: 6px 10px; font-family: monospace; font-size: 0.8rem; color: #cbd5e1; margin: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .sn-copy { cursor: pointer; opacity: 0.6; transition: 0.2s; } .sn-copy:hover { opacity: 1; color: var(--accent-teal); }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; margin-bottom: 12px; }
+        .info-label { color: #64748b; } .info-val { color: #e2e8f0; font-weight: 500; }
+        
+        .warranty-badge { font-size: 0.7rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block; width: fit-content; }
+        .w-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .w-expired { background: rgba(255, 255, 255, 0.05); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .support-row { font-size: 0.75rem; color: #94a3b8; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 6px; }
+
+        /* Libretto Button (RIPRISTINATO) */
+        .libretto-btn { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 8px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center; margin-top: 10px; transition: 0.2s; }
+        .libretto-btn:hover { background: rgba(245, 158, 11, 0.3); }
+
+        /* Action Buttons */
+        .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; opacity: 0.6; transition: 0.2s; }
+        .asset-card:hover .card-actions { opacity: 1; }
+        .icon-btn { padding: 4px; border-radius: 4px; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
+        .icon-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+        .icon-btn.del:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+
+        /* Modal */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .modal-box { background: #0f151a; border: 1px solid #2dd4bf; padding: 2rem; border-radius: 16px; width: 600px; max-height: 90vh; overflow-y: auto; }
+        
+        input, select { width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; margin-bottom: 10px; }
+        .btn { padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--accent-teal); color: #00282c; }
+
+        /* Table */
+        .log-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+        .log-table th { text-align: left; color: #94a3b8; padding: 8px; border-bottom: 1px solid #334155; }
+        .log-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+<style id="masotto-sidebar-css">
+:root{
+  --bg-dark:#0b1220;
+  --panel:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.10);
+  --brand:#004D54;
+  --accent:#2dd4bf;
+}
+body{background:var(--bg-dark);}
+.ms-sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:260px; background:rgba(15,23,42,.96);
+  border-right:1px solid var(--border);
+  padding:20px; z-index:50; overflow:auto;
+}
+.ms-main{margin-left:260px; min-height:100vh;}
+@media (max-width: 900px){
+  .ms-sidebar{transform:translateX(-105%); transition:.2s;}
+  .ms-sidebar.open{transform:translateX(0);}
+  .ms-main{margin-left:0;}
+  .ms-topbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(10px);
+    background:rgba(11,18,32,.75); border-bottom:1px solid var(--border);}
+}
+.ms-nav a{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  color:#94a3b8; font-weight:600; text-decoration:none;
+}
+.ms-nav a:hover{background:rgba(255,255,255,.05); color:#fff;}
+.ms-nav a.active{background:var(--brand); color:var(--accent); border-left:3px solid var(--accent);}
+.ms-chip{font:600 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color:var(--accent); background:rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.25);
+  padding:2px 8px; border-radius:999px; display:inline-block;}
+</style>
+    <script src="masotto_db.js"></script>
+</head>
+<body>
+
+    <div>
+        
+
+        <main class="main">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl font-bold">Asset & Impianti</h2>
+                    <div class="text-sm text-gray-400">Inventario, Garanzie & Libretto Caldaia</div>
+                </div>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <input type="text" id="searchInput" onkeyup="filterAssets()" placeholder="Cerca S/N o Modello..." style="margin:0; width: 200px;">
+                    <button onclick="openEditModal()" class="btn btn-primary flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Aggiungi</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div class="stat-card border-l-4 border-blue-500">
+                    <div class="stat-title text-blue-400">Valore Asset</div>
+                    <div class="stat-value text-white" id="kpi-value">€ 0</div>
+                </div>
+                <div class="stat-card border-l-4 border-teal-500">
+                    <div class="stat-title text-teal-400">Totale Oggetti</div>
+                    <div class="stat-value text-teal-400" id="kpi-count">0</div>
+                </div>
+                <div class="stat-card border-l-4 border-orange-500">
+                    <div class="stat-title text-orange-400">Interventi Recenti</div>
+                    <div class="stat-value text-orange-400" id="kpi-maint">0</div>
+                </div>
+            </div>
+
+            <div id="asset-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                </div>
+        </main>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-xl font-bold mb-4" id="modalTitle">Gestione Asset</h3>
+            <input type="hidden" id="as-id">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <select id="as-cat">
+                    <option value="Elettro">Elettrodomestico</option>
+                    <option value="Cucina">Cucina</option>
+                    <option value="Svago">Svago / TV</option>
+                    <option value="Clima">Clima / ACS</option>
+                    <option value="Pulizia">Pulizia</option>
+                    <option value="Mobilio">Mobilio</option>
+                </select>
+                <input type="text" id="as-name" placeholder="Nome (es. Lavatrice)">
+            </div>
+            
+            <input type="text" id="as-model" placeholder="Marca e Modello">
+            <input type="text" id="as-sn" placeholder="Serial Number (S/N)">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <input type="date" id="as-date">
+                <input type="number" id="as-price" placeholder="Prezzo (€)">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <input type="number" id="as-warranty" placeholder="Anno Scadenza Garanzia">
+                <input type="text" id="as-support" placeholder="Contatto Assistenza">
+            </div>
+
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveAsset()" class="btn btn-primary w-full text-center justify-center">Salva Asset</button>
+                <button onclick="closeModal('editModal')" class="btn w-full text-center justify-center bg-gray-700 text-white">Annulla</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="maintModal" class="modal">
+        <div class="modal-box">
+            <div class="flex justify-between items-start mb-4 border-b border-white/10 pb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2" id="m-modal-title">
+                        <i data-lucide="wrench" class="text-teal-400"></i> Manutenzione
+                    </h3>
+                    <div class="text-sm text-gray-400 mt-1" id="m-asset-name">Nome Asset</div>
+                </div>
+                <div id="m-warranty-status" class="warranty-badge"></div>
+            </div>
+
+            <div id="boiler-fields" class="hidden bg-white/5 p-3 rounded mb-4 text-xs space-y-2 border border-orange-500/30">
+                <div class="flex justify-between border-b border-white/10 pb-1"><span class="text-orange-300 font-bold uppercase"><i data-lucide="alert-triangle" class="w-3 h-3 inline"></i> Scadenze di Legge (DPR 74/2013)</span></div>
+                <div class="flex justify-between"><span>Prossima Ordinaria (Annuale):</span> <span class="font-bold text-white" id="lib-next-ord">-</span></div>
+                <div class="flex justify-between"><span>Prossimo Bollino Blu (Biennale):</span> <span class="font-bold text-blue-400" id="lib-next-fumi">-</span></div>
+            </div>
+
+            <h4 class="font-bold text-sm mb-2">Storico Interventi</h4>
+            <div class="max-h-[150px] overflow-y-auto bg-black/20 rounded border border-white/10 mb-4">
+                <table class="log-table">
+                    <thead><tr><th>Data</th><th>Tipo</th><th>Note</th><th>Costo</th></tr></thead>
+                    <tbody id="m-log-body"></tbody>
+                </table>
+            </div>
+
+            <div class="pt-4 border-t border-white/10">
+                <h4 class="font-bold text-sm mb-2 text-teal-400">+ Registra Nuovo Intervento</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="date" id="new-m-date">
+                    <select id="new-m-type">
+                        <option value="Riparazione">Riparazione Guasto</option>
+                        <option value="Manutenzione">Manutenzione Ordinaria</option>
+                        <option value="Bollino Blu">Bollino Blu (Caldaia)</option>
+                        <option value="Controllo">Controllo Generale</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="new-m-note" placeholder="Tecnico / Note">
+                    <input type="number" id="new-m-cost" placeholder="Costo (€)">
+                </div>
+                <button onclick="addLog()" class="btn btn-primary w-full justify-center">Salva Intervento</button>
+            </div>
+            
+            <button onclick="closeModal('maintModal')" class="mt-4 w-full text-center text-gray-500 hover:text-white text-sm">Chiudi</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATABASE ASSET ---
+        let assets = [
+            { 
+                id: 94, name: "Scaldabagno Gas", cat: "Clima", model: "HERMANN (Saunier Duval) OPALIA EXTERNAL F", sn: "211828001001325300100128", date: "2023-10-02", price: 0, warEnd: 2025, support: "Centro Ass. Hermann", isBoiler: true,
+                maintHistory: [{ date: '2023-10-02', type: 'Installazione', cost: 0, note: 'Prima accensione' }]
+            },
+            { id: 1, name: "Lavasciuga", cat: "Elettro", model: "MIELE Softtronic WT 2670", sn: "86308219", date: "2019-09-01", price: 459, warEnd: 2021, support: "800-845677", maintHistory: [] },
+            { id: 2, name: "TV 43 Pollici", cat: "Svago", model: "HISENSE 43E63KT", sn: "36FG5G23113PITADPL53889", date: "2023-11-06", price: 299, warEnd: 2027, support: "800-321999", maintHistory: [] },
+            { id: 3, name: "Frigorifero", cat: "Cucina", model: "IKEA HUTTRA", sn: "IK-FR-8890", date: "2023-10-02", price: 409, warEnd: 2028, support: "Chat / Store", maintHistory: [] },
+            { id: 4, name: "Microonde", cat: "Cucina", model: "IKEA MATÄLSKARE", sn: "152329002291", date: "2023-10-02", price: 299, warEnd: 2025, support: "Chat / Store", maintHistory: [] },
+            { id: 6, name: "Lavastoviglie", cat: "Cucina", model: "IKEA MEDELSTOR", sn: "IK-DW-221", date: "2023-10-02", price: 419, warEnd: 2028, support: "Chat / Store", maintHistory: [] },
+            { id: 7, name: "Piano Cottura", cat: "Cucina", model: "IKEA VILSTA (Induzione)", sn: "IK-IND-55", date: "2023-10-02", price: 239, warEnd: 2028, support: "Chat / Store", maintHistory: [] },
+            { id: 8, name: "Aspirapolvere", cat: "Pulizia", model: "BLACK+DECKER BXVMS600E", sn: "44491HK", date: "2026-01-04", price: 49, warEnd: 2028, support: "Centro Ass. MI", maintHistory: [] },
+            { id: 9, name: "Macchina Caffè", cat: "Cucina", model: "LAVAZZA Jolie Evo", sn: "YWU9AJPKFPKER9WC", date: "2024-11-14", price: 94.90, warEnd: 2026, support: "Servizio A Modo Mio", maintHistory: [] },
+            { id: 10, name: "Condizionatore", cat: "Clima", model: "CANDY CY-09TAOUT", sn: "AABL7GEO00ON1P5R0599", date: "2023-10-02", price: 0, warEnd: 2025, support: "02-445566", maintHistory: [] },
+            { id: 11, name: "Materasso Matr.", cat: "Mobilio", model: "IKEA VAGSTRANDA", sn: "-", date: "2023-10-02", price: 399, warEnd: 2033, support: "Chat / Store", maintHistory: [] },
+            { id: 12, name: "Topper Memory", cat: "Mobilio", model: "IKEA TUSTNA", sn: "-", date: "2023-10-02", price: 150, warEnd: 2025, support: "Chat / Store", maintHistory: [] }
+        ];
+
+        // --- 2. RENDER ---
+        function init() {
+            renderAssets(assets);
+            updateKPI();
+            lucide.createIcons();
+        }
+
+        function getIcon(item) {
+            if (item.isBoiler) return 'flame';
+            switch(item.cat) {
+                case 'Elettro': return 'washing-machine';
+                case 'Svago': return 'tv';
+                case 'Cucina': return 'utensils-crossed';
+                case 'Clima': return 'snowflake';
+                case 'Mobilio': return 'bed-double';
+                case 'Pulizia': return 'sparkles';
+                default: return 'box';
+            }
+        }
+
+        function renderAssets(data) {
+            const grid = document.getElementById('asset-grid');
+            grid.innerHTML = "";
+            const currentYear = new Date().getFullYear();
+
+            data.forEach(item => {
+                const isActive = item.warEnd >= currentYear;
+                const badgeClass = isActive ? 'w-active' : 'w-expired';
+                const badgeText = isActive ? `GARANZIA (${item.warEnd})` : `SCADUTA (${item.warEnd})`;
+                const specialClass = item.isBoiler ? 'boiler-card' : '';
+
+                // Tasto Libretto SOLO per Caldaia
+                const librettoBtn = item.isBoiler 
+                    ? `<button onclick="openMaintenance(${item.id})" class="libretto-btn"><i data-lucide="book-open" class="w-4 h-4"></i> Libretto Impianto</button>` 
+                    : '';
+                
+                // Per gli altri asset, la chiave inglese standard
+                const actions = item.isBoiler ? '' : `<button onclick="openMaintenance(${item.id})" class="icon-btn" title="Manutenzione"><i data-lucide="wrench" class="w-4 h-4"></i></button>`;
+
+                grid.innerHTML += `
+                <div class="asset-card ${specialClass}">
+                    <div class="card-actions">
+                        <button onclick="editAsset(${item.id})" class="icon-btn" title="Modifica"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        ${actions}
+                        <button onclick="deleteAsset(${item.id})" class="icon-btn del" title="Elimina"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+
+                    <div>
+                        <div class="asset-icon"><i data-lucide="${getIcon(item)}"></i></div>
+                        <div class="asset-name">${item.name}</div>
+                        <div class="asset-model">${item.model}</div>
+                        
+                        <div class="sn-box">
+                            <span>${item.sn}</span>
+                            <i data-lucide="copy" class="w-3 h-3 sn-copy" onclick="copySn('${item.sn}')" title="Copia S/N"></i>
+                        </div>
+
+                        <div class="info-grid">
+                            <span class="info-label">Acquisto</span><span class="info-val text-right">${item.date}</span>
+                            <span class="info-label">Prezzo</span><span class="info-val text-right">€ ${item.price.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="warranty-badge ${badgeClass}">${badgeText}</div>
+                        ${librettoBtn}
+                        <div class="support-row">
+                            <i data-lucide="headset" class="w-3 h-3"></i> <span class="text-white font-bold select-all truncate">${item.support}</span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            lucide.createIcons();
+        }
+
+        // --- 3. MAINTENANCE / LIBRETTO LOGIC ---
+        let currentAssetId = null;
+
+        function openMaintenance(id) {
+            currentAssetId = id;
+            const asset = assets.find(a => a.id === id);
+            const currentYear = new Date().getFullYear();
+            const isActive = asset.warEnd >= currentYear;
+
+            // Setup Header
+            const title = asset.isBoiler ? "Libretto Impianto" : "Manutenzione & Assistenza";
+            document.getElementById('m-modal-title').innerHTML = `<i data-lucide="${asset.isBoiler ? 'book-open' : 'wrench'}" class="text-teal-400"></i> ${title}`;
+            document.getElementById('m-asset-name').innerText = `${asset.name} - ${asset.model}`;
+            
+            const badge = document.getElementById('m-warranty-status');
+            badge.className = `warranty-badge ${isActive ? 'w-active' : 'w-expired'}`;
+            badge.innerText = isActive ? `GARANZIA ATTIVA (Scade ${asset.warEnd})` : `GARANZIA SCADUTA (${asset.warEnd})`;
+
+            // Boiler Specifics
+            const boilerBox = document.getElementById('boiler-fields');
+            if(asset.isBoiler) {
+                boilerBox.classList.remove('hidden');
+                // Calcolo scadenze dimostrativo (basato su ultimo log)
+                const lastLog = asset.maintHistory.length > 0 ? asset.maintHistory[asset.maintHistory.length-1] : null;
+                const baseYear = lastLog ? parseInt(lastLog.date.split('-')[0]) : currentYear;
+                
+                document.getElementById('lib-next-ord').innerText = `Ottobre ${baseYear + 1}`;
+                document.getElementById('lib-next-fumi').innerText = `Ottobre ${baseYear + 2}`;
+            } else {
+                boilerBox.classList.add('hidden');
+            }
+
+            // History Table
+            const tbody = document.getElementById('m-log-body');
+            tbody.innerHTML = "";
+            const history = asset.maintHistory || [];
+            
+            if(history.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 italic py-4">Nessun intervento registrato</td></tr>`;
+            } else {
+                history.slice().reverse().forEach(log => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="text-gray-300">${log.date}</td>
+                            <td class="font-bold text-white">${log.type}</td>
+                            <td class="text-gray-400">${log.note || '-'}</td>
+                            <td class="font-mono text-right">€ ${log.cost}</td>
+                        </tr>`;
+                });
+            }
+
+            document.getElementById('maintModal').style.display = 'flex';
+            lucide.createIcons();
+        }
+
+        function addLog() {
+            const date = document.getElementById('new-m-date').value;
+            const type = document.getElementById('new-m-type').value;
+            const note = document.getElementById('new-m-note').value;
+            const cost = parseFloat(document.getElementById('new-m-cost').value) || 0;
+
+            if(!date) return alert("Inserisci almeno la data");
+
+            const asset = assets.find(a => a.id === currentAssetId);
+            if(!asset.maintHistory) asset.maintHistory = [];
+            
+            asset.maintHistory.push({ date, type, note, cost });
+            
+            // Reset & Refresh
+            document.getElementById('new-m-note').value = "";
+            document.getElementById('new-m-cost').value = "";
+            openMaintenance(currentAssetId);
+            updateKPI();
+        }
+
+        // --- 4. CRUD ---
+        function updateKPI() {
+            const totalVal = assets.reduce((a, b) => a + b.price, 0);
+            const totalMaint = assets.reduce((sum, a) => sum + (a.maintHistory ? a.maintHistory.length : 0), 0);
+            document.getElementById('kpi-value').innerText = `€ ${totalVal.toLocaleString('it-IT', {minimumFractionDigits: 0})}`;
+            document.getElementById('kpi-count').innerText = assets.length;
+            document.getElementById('kpi-maint').innerText = totalMaint;
+        }
+
+        function filterAssets() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = assets.filter(a => a.name.toLowerCase().includes(term) || a.model.toLowerCase().includes(term));
+            renderAssets(filtered);
+        }
+
+        function copySn(text) { navigator.clipboard.writeText(text); }
+
+        function openEditModal(id = null) {
+            document.getElementById('editModal').style.display = 'flex';
+            if(id) {
+                const a = assets.find(x => x.id === id);
+                document.getElementById('modalTitle').innerText = "Modifica Asset";
+                document.getElementById('as-id').value = a.id;
+                document.getElementById('as-cat').value = a.cat;
+                document.getElementById('as-name').value = a.name;
+                document.getElementById('as-model').value = a.model;
+                document.getElementById('as-sn').value = a.sn;
+                document.getElementById('as-date').value = a.date;
+                document.getElementById('as-price').value = a.price;
+                document.getElementById('as-warranty').value = a.warEnd;
+                document.getElementById('as-support').value = a.support;
+            } else {
+                document.getElementById('modalTitle').innerText = "Nuovo Asset";
+                document.getElementById('as-id').value = "";
+                document.querySelectorAll('#editModal input').forEach(i => i.value = "");
+            }
+        }
+
+        function saveAsset() {
+            const idVal = document.getElementById('as-id').value;
+            const newAsset = {
+                id: idVal ? parseInt(idVal) : Date.now(),
+                cat: document.getElementById('as-cat').value,
+                name: document.getElementById('as-name').value,
+                model: document.getElementById('as-model').value,
+                sn: document.getElementById('as-sn').value,
+                date: document.getElementById('as-date').value,
+                price: parseFloat(document.getElementById('as-price').value),
+                warEnd: parseInt(document.getElementById('as-warranty').value),
+                support: document.getElementById('as-support').value,
+                maintHistory: [],
+                isBoiler: document.getElementById('as-cat').value === 'Clima' && document.getElementById('as-name').value.toLowerCase().includes('caldaia') 
+            };
+
+            if(idVal) {
+                const idx = assets.findIndex(x => x.id == idVal);
+                newAsset.maintHistory = assets[idx].maintHistory;
+                newAsset.isBoiler = assets[idx].isBoiler;
+                assets[idx] = newAsset;
+            } else {
+                assets.push(newAsset);
+            }
+            closeModal('editModal');
+            init();
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+        function editAsset(id) { openEditModal(id); }
+        function deleteAsset(id) { if(confirm("Eliminare asset?")) { assets = assets.filter(x => x.id !== id); init(); } }
+
+        window.onload = init;
+    </script>
+<script id="masotto-sidebar">
+(function(){
+  const PAGES = [
+    ["index.html","Dashboard","layout-dashboard"],
+    ["ANAGRAFICA.html","Anagrafica","id-card"],
+    ["asset.html","Asset","boxes"],
+    ["audit.html","Audit","clipboard-check"],
+    ["manutenzione.html","Manutenzione","wrench"],
+    ["prenotazioni.html","Prenotazioni","calendar"],
+    ["FINANZE.html","Finanze","pie-chart"],
+    ["conto.html","Conto","wallet"],
+    ["consuntivo_25.html","Consuntivo 2025","file-text"],
+    ["sicurezza.html","Sicurezza","shield"]
+  ];
+
+  function purgeOtherAlloggi(){
+    try{
+      const kill = ["nolo","suite","nest","studio","heritage","bassano","chavez","termopili"];
+      Object.keys(localStorage).forEach(k=>{
+        const lk = k.toLowerCase();
+        if(k.startsWith("masotto_")) return;
+        if(kill.some(t=>lk.includes(t))) localStorage.removeItem(k);
+      });
+          window.__MS_SIDEBAR_DONE = true;
+}catch(e){}
+  }
+
+  async function ensureMasterDB(force=false){
+    try{
+      let master = null;
+
+      if(window.MASOTTO_DB) master = window.MASOTTO_DB;
+
+      if(!master){
+        const res = await fetch("masotto_complete_database.json", {cache:"no-store"});
+        if(!res.ok) throw new Error("fetch failed");
+        master = await res.json();
+      }
+
+const map = {
+        "masotto_prop_data": "property_master",
+        "masotto_assets_mobile_db": "assets_mobile",
+        "masotto_structural_assets_db": "structural_assets",
+        "masotto_finance_db": "finances",
+        "masotto_booking_db": "bookings",
+        "masotto_maint_db": "tickets",
+        "masotto_insurance_db": "insurance",
+        "masotto_utilities_db": "utilities",
+        "masotto_contacts_db": "contacts",
+        "masotto_maintenance_presets_db": "maintenance_presets"
+      };
+
+      purgeOtherAlloggi();
+
+      for(const [lsKey, section] of Object.entries(map)){
+        const existing = localStorage.getItem(lsKey);
+        const isEmpty = !existing || existing==="null" || existing==="[]" || existing==="{}";
+        if(force || isEmpty){
+          localStorage.setItem(lsKey, JSON.stringify(master[section] ?? []));
+        }
+      }
+      localStorage.setItem("active_property", "Masotto Terrace View");
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function mountSidebar(){
+  // idempotent mount (safe even if scripts load twice)
+  if (window.__MS_SIDEBAR_DONE && document.getElementById("msSidebar")) return;
+  try{
+    // remove legacy sidebars, but NEVER remove #msSidebar
+    document.querySelectorAll("aside.sidebar, div.sidebar, #sidebar, [data-legacy-sidebar=\"1\"]").forEach(el=>el.remove());
+    document.querySelectorAll(".ms-sidebar").forEach(el=>{ if(el.id !== "msSidebar") el.remove(); });
+  }catch(e){}
+  if (document.getElementById("msSidebar")) { window.__MS_SIDEBAR_DONE = true; return; }
+
+  const path = (location.pathname.split("/").pop() || "index.html");
+    const nav = PAGES.map(([href,label,icon])=>{
+      const active = (href.toLowerCase() === path.toLowerCase()) ? "active" : "";
+      return `<a class="${active}" href="${href}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></a>`;
+    }).join("");
+
+    const sidebar = document.createElement("aside");
+    sidebar.className="ms-sidebar";
+    sidebar.id="msSidebar";
+    sidebar.innerHTML = `
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+             style="background:linear-gradient(135deg,#004D54,#10b981)">2M</div>
+        <div>
+          <div class="text-white font-bold leading-tight">Masotto Terrace</div>
+          <div class="ms-chip">single-property mode</div>
+        </div>
+      </div>
+      <nav class="ms-nav space-y-1">${nav}</nav>
+      <div class="mt-6 p-3 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+        <div class="text-[11px] text-gray-400">Data source</div>
+        <div class="text-[12px] text-white font-semibold">masotto_complete_database.json</div>
+        <button id="msSyncBtn" class="mt-3 w-full text-xs font-bold px-3 py-2 rounded-lg"
+          style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.35);color:#a7f3d0;">
+          Sync DB
+        </button>
+      </div>
+    `;
+
+    // main wrapper
+    const mainWrap = document.createElement("div");
+    mainWrap.className = "ms-main";
+    while(document.body.firstChild){
+      mainWrap.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(sidebar);
+    document.body.appendChild(mainWrap);
+
+    // mobile topbar + toggle
+    const topbar = document.createElement("div");
+    topbar.className="ms-topbar p-3 flex items-center justify-between lg:hidden";
+    topbar.innerHTML = `
+      <button id="msToggle" class="px-3 py-2 rounded-lg text-white text-xs font-bold"
+        style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);">
+        ☰ Menu
+      </button>
+      <div class="text-white font-bold text-sm">Masotto Terrace</div>
+      <div style="width:64px"></div>
+    `;
+    mainWrap.prepend(topbar);
+
+    document.getElementById("msToggle").addEventListener("click", ()=>{
+      sidebar.classList.toggle("open");
+    });
+    document.getElementById("msSyncBtn").addEventListener("click", async ()=>{
+      await ensureMasterDB(true);
+      location.reload();
+    });
+  }
+
+  // boot
+  window.__ensureMasottoDB = ensureMasterDB;
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    await ensureMasterDB(false);
+    mountSidebar();
+    if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  });
+})();
+</script>
+    
+</body>
+</html>

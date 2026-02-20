@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masotto - Sicurezza Editabile</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --bg-dark: #080c10; --panel-dark: #0f151a; --panel-light: #131b24; --accent-teal: #2dd4bf; --accent-red: #ef4444; --accent-blue: #3b82f6; --border: rgba(255,255,255,0.1); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-dark); color: white; margin: 0; height: 100vh; overflow: hidden; }
+        
+        .main { flex: 1; overflow-y: auto; padding: 2rem; background: radial-gradient(circle at top right, #112a2e 0%, #080c10 40%); }
+        
+        .nav-link { display: flex; items-center; gap: 12px; padding: 10px; border-radius: 8px; color: #94a3b8; text-decoration: none; margin-bottom: 5px; font-size: 0.9rem; font-weight: 500; }
+        .nav-link:hover, .nav-link.active { background: rgba(45, 212, 191, 0.1); color: var(--accent-teal); border-left: 3px solid var(--accent-teal); }
+        
+        /* Grid & Cards */
+        .proc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+        .card { background: var(--panel-light); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .card-header { border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Interactive List Items */
+        .check-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px dashed rgba(255,255,255,0.05); cursor: pointer; border-radius: 6px; transition: 0.2s; }
+        .check-item:hover { background: rgba(255,255,255,0.05); }
+        .check-item:last-child { border-bottom: none; }
+        
+        .item-name { display: flex; align-items: center; gap: 10px; font-weight: 500; color: #e2e8f0; }
+        
+        /* Badges */
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; min-width: 80px; text-align: center; }
+        .b-ok { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .b-warn { background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .b-crit { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        /* Modal */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .modal-box { background: #0f151a; border: 1px solid var(--accent-teal); padding: 2rem; border-radius: 16px; width: 450px; }
+        
+        input, select { width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; margin-bottom: 10px; }
+        label { display: block; font-size: 0.75rem; color: #94a3b8; font-weight: 700; uppercase; margin-bottom: 4px; }
+        
+        .btn { padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--accent-teal); color: #00282c; }
+        
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+<style id="masotto-sidebar-css">
+:root{
+  --bg-dark:#0b1220;
+  --panel:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.10);
+  --brand:#004D54;
+  --accent:#2dd4bf;
+}
+body{background:var(--bg-dark);}
+.ms-sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:260px; background:rgba(15,23,42,.96);
+  border-right:1px solid var(--border);
+  padding:20px; z-index:50; overflow:auto;
+}
+.ms-main{margin-left:260px; min-height:100vh;}
+@media (max-width: 900px){
+  .ms-sidebar{transform:translateX(-105%); transition:.2s;}
+  .ms-sidebar.open{transform:translateX(0);}
+  .ms-main{margin-left:0;}
+  .ms-topbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(10px);
+    background:rgba(11,18,32,.75); border-bottom:1px solid var(--border);}
+}
+.ms-nav a{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  color:#94a3b8; font-weight:600; text-decoration:none;
+}
+.ms-nav a:hover{background:rgba(255,255,255,.05); color:#fff;}
+.ms-nav a.active{background:var(--brand); color:var(--accent); border-left:3px solid var(--accent);}
+.ms-chip{font:600 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color:var(--accent); background:rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.25);
+  padding:2px 8px; border-radius:999px; display:inline-block;}
+</style>
+    <script src="masotto_db.js"></script>
+</head>
+<body>
+
+    <div>
+        
+
+        <main class="main">
+            <h2 class="text-3xl font-bold text-white mb-2">Sicurezza & Procedure</h2>
+            <div class="text-sm text-gray-400 mb-8">Clicca su una voce per aggiornarne lo stato o la scadenza.</div>
+
+            <div class="proc-grid">
+                
+                <div class="card border-t-4 border-t-red-500">
+                    <div class="card-header">
+                        <h3 class="font-bold text-white flex gap-2"><i data-lucide="shield-alert" class="text-red-500"></i> Dispositivi Sicurezza</h3>
+                    </div>
+                    <div id="safety-list">
+                        </div>
+                </div>
+
+                <div class="card border-t-4 border-t-blue-500">
+                    <div class="card-header">
+                        <h3 class="font-bold text-white flex gap-2"><i data-lucide="file-check" class="text-blue-500"></i> Burocrazia & Adempimenti</h3>
+                    </div>
+                    <div id="buro-list">
+                        </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5 text-teal-400"></i> Modifica Voce</h3>
+            <input type="hidden" id="edit-id">
+            
+            <label>Nome Voce</label>
+            <input type="text" id="edit-name" disabled class="opacity-50 cursor-not-allowed text-gray-400">
+            
+            <label>Stato Attuale</label>
+            <select id="edit-status">
+                <option value="ok">✅ OK / Attivo</option>
+                <option value="warn">⚠️ Attenzione / In Scadenza</option>
+                <option value="crit">⛔ Scaduto / Assente</option>
+            </select>
+            
+            <label>Nota / Scadenza</label>
+            <input type="text" id="edit-note" placeholder="Es. Scad. 2028 o Link accesso">
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveEdit()" class="btn btn-primary w-full justify-center">Salva Aggiornamento</button>
+                <button onclick="closeModal()" class="btn w-full justify-center bg-gray-700 text-white">Annulla</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATABASE ---
+        let items = [
+            // Sicurezza
+            { id: 1, type: 'safety', name: 'Estintore Cucina', icon: 'fire-extinguisher', status: 'ok', note: 'Scad. 2028' },
+            { id: 2, type: 'safety', name: 'Rilevatore Gas/CO', icon: 'wind', status: 'ok', note: 'Testato Gen 2026' },
+            { id: 3, type: 'safety', name: 'Kit Primo Soccorso', icon: 'briefcase-medical', status: 'warn', note: 'Verificare scadenze' },
+            { id: 4, type: 'safety', name: 'Luci Emergenza', icon: 'flashlight', status: 'ok', note: 'Funzionanti' },
+            
+            // Burocrazia
+            { id: 10, type: 'buro', name: 'Portale Alloggiati', icon: 'globe', status: 'ok', note: 'Accesso OK' },
+            { id: 11, type: 'buro', name: 'Tassa Soggiorno', icon: 'euro', status: 'warn', note: 'Dichiarare entro il 16' },
+            { id: 12, type: 'buro', name: 'Esposizione CIN/CIR', icon: 'building', status: 'ok', note: 'Codice IT015...' },
+            { id: 13, type: 'buro', name: 'Assicurazione RC', icon: 'shield', status: 'ok', note: 'Rinnovo Ott 2026' }
+        ];
+
+        // --- RENDER ---
+        function render() {
+            const safetyContainer = document.getElementById('safety-list');
+            const buroContainer = document.getElementById('buro-list');
+            
+            safetyContainer.innerHTML = "";
+            buroContainer.innerHTML = "";
+
+            items.forEach(item => {
+                // Determine badge style
+                let badgeClass = 'b-ok';
+                let badgeText = item.note || 'OK';
+                
+                if(item.status === 'warn') badgeClass = 'b-warn';
+                if(item.status === 'crit') badgeClass = 'b-crit';
+
+                const html = `
+                <div class="check-item" onclick="openEdit(${item.id})">
+                    <div class="item-name">
+                        <i data-lucide="${item.icon}" class="w-4 h-4 text-gray-500"></i> ${item.name}
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="badge ${badgeClass}">${badgeText}</span>
+                        <i data-lucide="pencil" class="w-3 h-3 text-gray-600"></i>
+                    </div>
+                </div>`;
+
+                if(item.type === 'safety') safetyContainer.innerHTML += html;
+                else buroContainer.innerHTML += html;
+            });
+            
+            lucide.createIcons();
+        }
+
+        // --- EDIT LOGIC ---
+        function openEdit(id) {
+            const item = items.find(i => i.id === id);
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('edit-name').value = item.name;
+            document.getElementById('edit-status').value = item.status;
+            document.getElementById('edit-note').value = item.note;
+            
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function saveEdit() {
+            const id = parseInt(document.getElementById('edit-id').value);
+            const status = document.getElementById('edit-status').value;
+            const note = document.getElementById('edit-note').value;
+            
+            const idx = items.findIndex(i => i.id === id);
+            if(idx > -1) {
+                items[idx].status = status;
+                items[idx].note = note;
+            }
+            
+            closeModal();
+            render();
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        window.onload = render;
+    </script>
+<script id="masotto-sidebar">
+(function(){
+  const PAGES = [
+    ["index.html","Dashboard","layout-dashboard"],
+    ["ANAGRAFICA.html","Anagrafica","id-card"],
+    ["asset.html","Asset","boxes"],
+    ["audit.html","Audit","clipboard-check"],
+    ["manutenzione.html","Manutenzione","wrench"],
+    ["prenotazioni.html","Prenotazioni","calendar"],
+    ["FINANZE.html","Finanze","pie-chart"],
+    ["conto.html","Conto","wallet"],
+    ["consuntivo_25.html","Consuntivo 2025","file-text"],
+    ["sicurezza.html","Sicurezza","shield"]
+  ];
+
+  function purgeOtherAlloggi(){
+    try{
+      const kill = ["nolo","suite","nest","studio","heritage","bassano","chavez","termopili"];
+      Object.keys(localStorage).forEach(k=>{
+        const lk = k.toLowerCase();
+        if(k.startsWith("masotto_")) return;
+        if(kill.some(t=>lk.includes(t))) localStorage.removeItem(k);
+      });
+          window.__MS_SIDEBAR_DONE = true;
+}catch(e){}
+  }
+
+  async function ensureMasterDB(force=false){
+    try{
+      let master = null;
+
+      if(window.MASOTTO_DB) master = window.MASOTTO_DB;
+
+      if(!master){
+        const res = await fetch("masotto_complete_database.json", {cache:"no-store"});
+        if(!res.ok) throw new Error("fetch failed");
+        master = await res.json();
+      }
+
+const map = {
+        "masotto_prop_data": "property_master",
+        "masotto_assets_mobile_db": "assets_mobile",
+        "masotto_structural_assets_db": "structural_assets",
+        "masotto_finance_db": "finances",
+        "masotto_booking_db": "bookings",
+        "masotto_maint_db": "tickets",
+        "masotto_insurance_db": "insurance",
+        "masotto_utilities_db": "utilities",
+        "masotto_contacts_db": "contacts",
+        "masotto_maintenance_presets_db": "maintenance_presets"
+      };
+
+      purgeOtherAlloggi();
+
+      for(const [lsKey, section] of Object.entries(map)){
+        const existing = localStorage.getItem(lsKey);
+        const isEmpty = !existing || existing==="null" || existing==="[]" || existing==="{}";
+        if(force || isEmpty){
+          localStorage.setItem(lsKey, JSON.stringify(master[section] ?? []));
+        }
+      }
+      localStorage.setItem("active_property", "Masotto Terrace View");
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function mountSidebar(){
+  // idempotent mount (safe even if scripts load twice)
+  if (window.__MS_SIDEBAR_DONE && document.getElementById("msSidebar")) return;
+  try{
+    // remove legacy sidebars, but NEVER remove #msSidebar
+    document.querySelectorAll("aside.sidebar, div.sidebar, #sidebar, [data-legacy-sidebar=\"1\"]").forEach(el=>el.remove());
+    document.querySelectorAll(".ms-sidebar").forEach(el=>{ if(el.id !== "msSidebar") el.remove(); });
+  }catch(e){}
+  if (document.getElementById("msSidebar")) { window.__MS_SIDEBAR_DONE = true; return; }
+
+  const path = (location.pathname.split("/").pop() || "index.html");
+    const nav = PAGES.map(([href,label,icon])=>{
+      const active = (href.toLowerCase() === path.toLowerCase()) ? "active" : "";
+      return `<a class="${active}" href="${href}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></a>`;
+    }).join("");
+
+    const sidebar = document.createElement("aside");
+    sidebar.className="ms-sidebar";
+    sidebar.id="msSidebar";
+    sidebar.innerHTML = `
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+             style="background:linear-gradient(135deg,#004D54,#10b981)">2M</div>
+        <div>
+          <div class="text-white font-bold leading-tight">Masotto Terrace</div>
+          <div class="ms-chip">single-property mode</div>
+        </div>
+      </div>
+      <nav class="ms-nav space-y-1">${nav}</nav>
+      <div class="mt-6 p-3 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+        <div class="text-[11px] text-gray-400">Data source</div>
+        <div class="text-[12px] text-white font-semibold">masotto_complete_database.json</div>
+        <button id="msSyncBtn" class="mt-3 w-full text-xs font-bold px-3 py-2 rounded-lg"
+          style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.35);color:#a7f3d0;">
+          Sync DB
+        </button>
+      </div>
+    `;
+
+    // main wrapper
+    const mainWrap = document.createElement("div");
+    mainWrap.className = "ms-main";
+    while(document.body.firstChild){
+      mainWrap.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(sidebar);
+    document.body.appendChild(mainWrap);
+
+    // mobile topbar + toggle
+    const topbar = document.createElement("div");
+    topbar.className="ms-topbar p-3 flex items-center justify-between lg:hidden";
+    topbar.innerHTML = `
+      <button id="msToggle" class="px-3 py-2 rounded-lg text-white text-xs font-bold"
+        style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);">
+        ☰ Menu
+      </button>
+      <div class="text-white font-bold text-sm">Masotto Terrace</div>
+      <div style="width:64px"></div>
+    `;
+    mainWrap.prepend(topbar);
+
+    document.getElementById("msToggle").addEventListener("click", ()=>{
+      sidebar.classList.toggle("open");
+    });
+    document.getElementById("msSyncBtn").addEventListener("click", async ()=>{
+      await ensureMasterDB(true);
+      location.reload();
+    });
+  }
+
+  // boot
+  window.__ensureMasottoDB = ensureMasterDB;
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    await ensureMasterDB(false);
+    mountSidebar();
+    if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  });
+})();
+</script>
+    
+</body>
+</html>

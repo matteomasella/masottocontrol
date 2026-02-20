@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manutenzione Intelligente v150</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #080c10; color: white; height: 100vh; overflow: hidden; }
+        /* STILI IDENTICI AI PRECEDENTI */
+        .main { flex: 1; padding: 2rem; overflow-y: auto; }
+        .nav-link { display: flex; items-center; gap: 12px; padding: 10px; color: #94a3b8; text-decoration: none; border-radius: 8px; margin-bottom: 5px; font-size: 0.9rem; font-weight: 500; transition: 0.2s; }
+        .nav-link:hover, .nav-link.active { background: rgba(45, 212, 191, 0.1); color: #2dd4bf; border-left: 3px solid #2dd4bf; }
+        
+        .wh-section { margin-bottom: 2rem; background: #0f151a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1rem; }
+        .wh-grid { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .wh-item { min-width: 120px; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; border: 1px solid transparent; transition: 0.2s; background: rgba(255,255,255,0.02); }
+        .wh-item:hover { background: rgba(255,255,255,0.05); }
+        .wh-have { border-color: #22c55e; color: #4ade80; background: rgba(34, 197, 94, 0.05); }
+        .wh-miss { border-color: #ef4444; color: #f87171; opacity: 0.6; }
+
+        .asset-group-title { font-size: 0.8rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin: 1.5rem 0 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+        .asset-card { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+        .asset-card:hover { border-color: #2dd4bf; transform: translateY(-2px); background: #253346; }
+        .ac-icon { color: #2dd4bf; width: 24px; height: 24px; }
+
+        .kanban-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem; }
+        .kanban-col { background: #0f151a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1rem; min-height: 300px; }
+        .ticket { background: #1e293b; padding: 12px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; border-left: 4px solid; position: relative; transition: 0.2s; }
+        .ticket:hover { transform: translateX(2px); }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .modal-box { background: #0f151a; border: 1px solid #2dd4bf; padding: 2rem; border-radius: 16px; width: 750px; max-height: 95vh; overflow-y: auto; }
+        input, select { width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.2); padding: 10px; border-radius: 6px; color: white; margin-bottom: 10px; }
+        .est-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; margin-top: 10px; }
+        .est-table th { text-align: left; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 5px; }
+        .est-table td { padding: 8px 5px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .badge-reuse { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #22c55e; color: black; }
+        .badge-buy { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #ef4444; color: white; }
+
+        ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+<style id="masotto-sidebar-css">
+:root{
+  --bg-dark:#0b1220;
+  --panel:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.10);
+  --brand:#004D54;
+  --accent:#2dd4bf;
+}
+body{background:var(--bg-dark);}
+.ms-sidebar{
+  position:fixed; inset:0 auto 0 0;
+  width:260px; background:rgba(15,23,42,.96);
+  border-right:1px solid var(--border);
+  padding:20px; z-index:50; overflow:auto;
+}
+.ms-main{margin-left:260px; min-height:100vh;}
+@media (max-width: 900px){
+  .ms-sidebar{transform:translateX(-105%); transition:.2s;}
+  .ms-sidebar.open{transform:translateX(0);}
+  .ms-main{margin-left:0;}
+  .ms-topbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(10px);
+    background:rgba(11,18,32,.75); border-bottom:1px solid var(--border);}
+}
+.ms-nav a{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  color:#94a3b8; font-weight:600; text-decoration:none;
+}
+.ms-nav a:hover{background:rgba(255,255,255,.05); color:#fff;}
+.ms-nav a.active{background:var(--brand); color:var(--accent); border-left:3px solid var(--accent);}
+.ms-chip{font:600 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color:var(--accent); background:rgba(45,212,191,.10); border:1px solid rgba(45,212,191,.25);
+  padding:2px 8px; border-radius:999px; display:inline-block;}
+</style>
+    <script src="masotto_db.js"></script>
+</head>
+<body>
+    <div>
+        
+
+        <main class="main">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold">Manutenzione & Magazzino</h2>
+                    <div class="text-sm text-gray-400">La chiusura dei ticket aggiorna lo stato in Audit a W01 (100%)</div>
+                </div>
+            </div>
+
+            <div class="wh-section">
+                <div class="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-2"><i data-lucide="package"></i> Magazzino Attrezzi</div>
+                <div id="warehouse-grid" class="wh-grid"></div>
+            </div>
+
+            <div class="asset-group-title">Strutturali</div>
+            <div class="asset-grid">
+                <div class="asset-card" onclick="openTicket('PARETI')"><i data-lucide="layout-grid" class="ac-icon"></i><div class="font-bold text-sm">Pareti</div></div>
+                <div class="asset-card" onclick="openTicket('SOFFITTI')"><i data-lucide="arrow-up-from-line" class="ac-icon"></i><div class="font-bold text-sm">Soffitti</div></div>
+                <div class="asset-card" onclick="openTicket('PAVIMENTI')"><i data-lucide="layers" class="ac-icon"></i><div class="font-bold text-sm">Pavimenti</div></div>
+                <div class="asset-card" onclick="openTicket('SILICONATURE')"><i data-lucide="droplets" class="ac-icon"></i><div class="font-bold text-sm">Siliconature</div></div>
+                <div class="asset-card" onclick="openTicket('SCARICHI')"><i data-lucide="waves" class="ac-icon"></i><div class="font-bold text-sm">Scarichi</div></div>
+                <div class="asset-card" onclick="openTicket('IDRAULICA')"><i data-lucide="wrench" class="ac-icon"></i><div class="font-bold text-sm">Idraulica</div></div>
+                <div class="asset-card" onclick="openTicket('ELETTRICO')"><i data-lucide="zap" class="ac-icon"></i><div class="font-bold text-sm">Elettrico</div></div>
+                <div class="asset-card" onclick="openTicket('INFISSI')"><i data-lucide="maximize" class="ac-icon"></i><div class="font-bold text-sm">Infissi</div></div>
+            </div>
+
+            <div class="asset-group-title">Mobili & Elettrodomestici</div>
+            <div class="asset-grid">
+                <div class="asset-card" onclick="openTicket('ELETTRODOMESTICI')"><i data-lucide="washing-machine" class="ac-icon"></i><div class="font-bold text-sm">Elettrodom.</div></div>
+                <div class="asset-card" onclick="openTicket('HVAC')"><i data-lucide="thermometer" class="ac-icon"></i><div class="font-bold text-sm">Clima</div></div>
+                <div class="asset-card" onclick="openTicket('WIFI')"><i data-lucide="wifi" class="ac-icon"></i><div class="font-bold text-sm">Wi-Fi</div></div>
+            </div>
+
+            <div class="kanban-grid">
+                <div class="kanban-col border-t-4 border-red-500">
+                    <h3 class="font-bold text-red-400 mb-4 uppercase text-xs flex justify-between">Da Fare <span id="cnt-TODO">0</span></h3>
+                    <div id="col-TODO"></div>
+                </div>
+                <div class="kanban-col border-t-4 border-yellow-500">
+                    <h3 class="font-bold text-yellow-400 mb-4 uppercase text-xs flex justify-between">In Corso <span id="cnt-DOING">0</span></h3>
+                    <div id="col-DOING"></div>
+                </div>
+                <div class="kanban-col border-t-4 border-teal-500">
+                    <h3 class="font-bold text-teal-400 mb-4 uppercase text-xs flex justify-between">Completati <span id="cnt-DONE">0</span></h3>
+                    <div id="col-DONE"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-box">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                <h3 class="text-xl font-bold text-white"><span id="m-asset-name" class="text-teal-400"></span> / Intervento</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
+            </div>
+
+            <input type="hidden" id="t-id">
+            <button id="btn-advance" class="w-full py-3 rounded font-bold uppercase mb-4 transition" onclick="advanceStatus()">Stato</button>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">Preset Intervento</label>
+                    <select id="m-type" onchange="updateCalc()"></select>
+                </div>
+                <div id="div-qty" class="hidden">
+                    <label class="text-xs font-bold text-gray-500 uppercase">Quantità / MQ</label>
+                    <input type="number" id="m-qty" value="1" min="1" onchange="updateCalc()">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="text-xs font-bold text-gray-500 uppercase">Priorità</label><select id="t-pri"><option value="P0">P0 - Urgente</option><option value="P1">P1 - Alta</option><option value="P2">P2 - Normale</option></select></div>
+                <div><label class="text-xs font-bold text-gray-500 uppercase">Scadenza</label><input type="date" id="t-due"></div>
+            </div>
+
+            <div class="bg-black/20 p-3 rounded-lg border border-gray-700 mt-2">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-bold text-gray-400 uppercase">Preventivo</label>
+                    <span id="est-time" class="text-xs text-teal-400 font-bold border border-teal-500/50 px-2 py-1 rounded">Stima Tempo: -</span>
+                </div>
+                <table class="est-table">
+                    <thead><tr><th>Articolo</th><th>Tipo</th><th>Stato</th><th class="text-right">Costo</th></tr></thead>
+                    <tbody id="m-table-body"></tbody>
+                </table>
+                <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
+                    <span class="text-gray-400 text-sm">Manodopera (Stima Milano):</span>
+                    <input type="number" id="m-labor" class="w-24 bg-transparent border-b border-gray-500 text-right p-1 font-bold text-white" onchange="updateTotalDisplay()">
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mt-4 bg-teal-500/10 border border-teal-500 p-3 rounded">
+                <span class="text-teal-400 font-bold">TOTALE</span>
+                <span id="m-total" class="text-xl font-bold text-white">€ 0,00</span>
+            </div>
+
+            <div class="flex gap-2 mt-4">
+                <button onclick="deleteTicket()" class="p-3 text-red-400 bg-red-500/10 rounded hover:bg-red-500/20"><i data-lucide="trash-2"></i></button>
+                <button class="flex-1 bg-teal-500 text-black font-bold p-3 rounded hover:bg-teal-400" onclick="saveTicket()">SALVA TICKET</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CATALOGO (Uguale a v149) ---
+        const CATALOG = {
+            "M_STUCCO": { n: "Stucco pronto", p: 10, t: "CONS" }, "M_GOMMA": { n: "Gomma magica", p: 5, t: "CONS" },
+            "M_PITTURA": { n: "Idropittura", p: 20, t: "CONS" }, "M_MALTA": { n: "Malta rapida", p: 20, t: "CONS" },
+            "M_SPRAY_MUFFA": { n: "Spray cloro", p: 25, t: "CONS" }, "M_CERA": { n: "Cera/Stick", p: 15, t: "CONS" },
+            "M_COLLA": { n: "Colla vinilica", p: 10, t: "CONS" }, "M_PIASTRELLA": { n: "Colla+Fuga", p: 10, t: "CONS" },
+            "M_ACIDO_FUGHE": { n: "Acido tamponato", p: 15, t: "CONS" }, "M_SILICONE_AM": { n: "Silicone Antimuffa", p: 15, t: "CONS" },
+            "M_SILICONE_SAN": { n: "Silicone Sanitario", p: 10, t: "CONS" }, "M_SILICONE_ACR": { n: "Silicone Acrilico", p: 10, t: "CONS" },
+            "M_MELT": { n: "Acido Disgorgante", p: 15, t: "CONS" }, "M_GUARN_SIF": { n: "Guarnizioni Sifone", p: 5, t: "CONS" },
+            "M_FLESSIBILI": { n: "Flessibili", p: 20, t: "CONS" }, "M_CARTUCCIA": { n: "Cartuccia Mixer", p: 40, t: "CONS" },
+            "M_SOFFIONE": { n: "Soffione Doccia", p: 30, t: "CONS" }, "M_GALLEGGIANTE": { n: "Galleggiante WC", p: 35, t: "CONS" },
+            "M_LAMPADINA": { n: "Lampadina LED", p: 8, t: "CONS" }, "M_SCHIUMA": { n: "Schiuma/Gesso", p: 5, t: "CONS" },
+            "M_FRUTTO": { n: "Frutto Presa", p: 15, t: "CONS" }, "M_CITOFONO": { n: "Citofono Univ.", p: 50, t: "CONS" },
+            "M_MANIGLIA": { n: "Maniglia Oblò", p: 30, t: "CONS" }, "M_TUBO_CARICO": { n: "Tubo Acquastop", p: 15, t: "CONS" },
+            "M_RUOTE_CEST": { n: "Kit Ruote Cestello", p: 15, t: "CONS" }, "M_GUARN_FRIGO": { n: "Guarnizione Frigo", p: 50, t: "CONS" },
+            "M_LAMP_FRIGO": { n: "Lampadina E14", p: 8, t: "CONS" }, "M_SPRAY_CLIMA": { n: "Igienizzante Clima", p: 15, t: "CONS" },
+            "M_CINTINO": { n: "Cintino Tapparella", p: 20, t: "CONS" }, "M_CILINDRO": { n: "Cilindro Serratura", p: 75, t: "CONS" },
+            "M_DECALC": { n: "Decalcificante", p: 5, t: "CONS" }, "M_CAVO_ETH": { n: "Cavo Ethernet", p: 10, t: "CONS" },
+            // TOOLS
+            "T_SPATOLA": { n: "Spatola", p: 6, t: "TOOL", i: "eraser" }, "T_CARTA_V": { n: "Carta Vetrata", p: 5, t: "TOOL", i: "file-text" },
+            "T_PANNO": { n: "Panni Microfibra", p: 5, t: "TOOL", i: "eraser" }, "T_PENNELLO": { n: "Pennello", p: 5, t: "TOOL", i: "brush" },
+            "T_FONDO": { n: "Fondo Fissativo", p: 10, t: "TOOL", i: "paint-bucket" }, "T_SPAZZOLA": { n: "Spazzola", p: 5, t: "TOOL", i: "brush" },
+            "T_PISTOLA": { n: "Pistola Silicone", p: 12, t: "TOOL", i: "utensils" }, "T_CUTTER": { n: "Cutter", p: 5, t: "TOOL", i: "scissors" },
+            "T_SONDA": { n: "Sonda Idraulica", p: 12, t: "TOOL", i: "lasso" }, "T_SECCHIO": { n: "Secchio", p: 5, t: "TOOL", i: "bucket" },
+            "T_CHIAVE": { n: "Chiave Inglese", p: 20, t: "TOOL", i: "wrench" }, "T_CACCIAVITE": { n: "Set Cacciaviti", p: 15, t: "TOOL", i: "wrench" },
+            "T_SCALA": { n: "Scala", p: 60, t: "TOOL", i: "align-justify" }, "T_TORX": { n: "Cacciaviti Torx", p: 20, t: "TOOL", i: "wrench" },
+            "T_COMPRESSORE": { n: "Aria Compressa", p: 15, t: "TOOL", i: "wind" }
+        };
+
+        
+        // --- PRESET RESOLVER (fix) ---
+        function _getMasottoAssets(){
+            try { return JSON.parse(localStorage.getItem("masotto_assets_mobile_db") || "[]"); } catch(e){ return []; }
+        }
+        function _resolvePresetKey(assetKey){
+            if(RECIPES[assetKey]) return assetKey;
+
+            const key = (assetKey||"").toString().trim().toLowerCase();
+            const assets = _getMasottoAssets();
+            const a = assets.find(x =>
+                (x.asset_id||"").toString().toLowerCase()===key ||
+                (x.code||"").toString().toLowerCase()===key ||
+                (x.id||"").toString().toLowerCase()===key
+            );
+
+            // fallback: if they passed a label already
+            if(!a) return assetKey;
+
+            const cat = (a.category||a.categoria||"").toString().toLowerCase();
+            const sub = (a.subcategory||a.sottocategoria||a.tipo||"").toString().toLowerCase();
+            const name = (a.asset_name||a.name||a.articolo||"").toString();
+
+            // structural mapping
+            if(sub.includes("paret") || name.toLowerCase().includes("paret")) return "PARETI";
+            if(sub.includes("pav") || name.toLowerCase().includes("pav")) return "PAVIMENTI";
+            if(sub.includes("soff") || name.toLowerCase().includes("soff")) return "SOFFITTI";
+            if(sub.includes("scaric") || name.toLowerCase().includes("scaric") || name.toLowerCase().includes("sifon")) return "SCARICHI";
+            if(sub.includes("silicon") || name.toLowerCase().includes("silicon")) return "SILICONATURE";
+            if(sub.includes("infiss") || name.toLowerCase().includes("infiss") || name.toLowerCase().includes("serrament")) return "INFISSI";
+            if(sub.includes("elettric") || name.toLowerCase().includes("quadro") || name.toLowerCase().includes("presa")) return "ELETTRICO";
+            if(sub.includes("idraul") || name.toLowerCase().includes("rubinet") || name.toLowerCase().includes("valvol") || name.toLowerCase().includes("tubo")) return "IDRAULICA";
+            if(sub.includes("wifi") || name.toLowerCase().includes("router") ) return "WIFI";
+
+            // mobile mapping
+            if(cat.includes("clima") || cat.includes("hvac")) return "HVAC";
+            return "ELETTRODOMESTICI";
+        }
+
+        function _assetDisplayName(assetKey){
+            const key = (assetKey||"").toString().trim().toLowerCase();
+            const assets = _getMasottoAssets();
+            const a = assets.find(x =>
+                (x.asset_id||"").toString().toLowerCase()===key ||
+                (x.code||"").toString().toLowerCase()===key ||
+                (x.id||"").toString().toLowerCase()===key
+            );
+            if(!a) return assetKey;
+            return `${a.asset_id || a.code || assetKey} — ${(a.asset_name || a.name || a.articolo || "").toString()}`.trim();
+        }
+
+// --- 2. RECIPES ---
+        const RECIPES = {
+            "PARETI": [
+                { id: "STUCC", name: "Stuccatura buchi", mo: 45, t: "30m", i: ["M_STUCCO", "T_SPATOLA", "T_CARTA_V"] },
+                { id: "SEGNI", name: "Rimozione segni", mo: 30, t: "20m", i: ["M_GOMMA", "T_PANNO"] },
+                { id: "RITOCCO", name: "Tinteggiatura ritocco", mo: 60, t: "1h", i: ["M_PITTURA", "T_PENNELLO"] },
+                { id: "INTONACO", name: "Ripristino intonaco", mo: 90, t: "1.5h", i: ["M_MALTA", "T_FONDO", "T_SPATOLA"] }
+            ],
+            "SOFFITTI": [ { id: "MUFFA", name: "Trattamento antimuffa", mo: 70, t: "1h", i: ["M_SPRAY_MUFFA", "M_PITTURA"] } ],
+            "PAVIMENTI": [
+                { id: "PARQUET", name: "Riparazione graffio Parquet", mo: 70, t: "45m", i: ["M_CERA"] },
+                { id: "LAMINATO", name: "Incollaggio listello", mo: 50, t: "30m", i: ["M_COLLA"] },
+                { id: "PIASTRELLA", name: "Sostituzione piastrella", mo: 135, t: "2h", i: ["M_PIASTRELLA"] },
+                { id: "FUGHE", name: "Pulizia profonda fughe", mo: 50, t: "1.5h", i: ["M_ACIDO_FUGHE", "T_SPAZZOLA"] }
+            ],
+            "SILICONATURE": [
+                { id: "DOCCIA", name: "Rifacimento Box Doccia", mo: 90, t: "1.5h", i: ["M_SILICONE_AM", "T_PISTOLA", "T_CUTTER"] },
+                { id: "LAVABO", name: "Sigillatura Lavabo", mo: 50, t: "30m", i: ["M_SILICONE_SAN", "T_PISTOLA"] },
+                { id: "INFISSI", name: "Sigillatura Infissi", mo: 70, t: "1h", i: ["M_SILICONE_ACR", "T_PISTOLA"] }
+            ],
+            "SCARICHI": [
+                { id: "DISOTT", name: "Disotturazione Chimica", mo: 100, t: "45m", i: ["M_MELT", "T_SONDA"] },
+                { id: "SIFONE", name: "Pulizia Sifone", mo: 70, t: "40m", i: ["M_GUARN_SIF", "T_SECCHIO"] }
+            ],
+            "IDRAULICA": [
+                { id: "FLESS", name: "Sostituzione flessibili", mo: 90, t: "45m", i: ["M_FLESSIBILI", "T_CHIAVE"] },
+                { id: "CART", name: "Sostituzione Cartuccia", mo: 90, t: "1h", i: ["M_CARTUCCIA", "T_CACCIAVITE"] },
+                { id: "SOFFIONE", name: "Sostituzione Soffione", mo: 40, t: "15m", i: ["M_SOFFIONE", "T_CHIAVE"] },
+                { id: "WC", name: "Riparazione Cassetta WC", mo: 90, t: "1h", i: ["M_GALLEGGIANTE"] }
+            ],
+            "ELETTRICO": [
+                { id: "LAMP", name: "Sostituzione Lampadina", mo: 40, t: "20m", i: ["M_LAMPADINA", "T_SCALA"] },
+                { id: "PRESA_FIX", name: "Fissaggio presa", mo: 60, t: "30m", i: ["M_SCHIUMA", "T_CACCIAVITE"] },
+                { id: "FRUTTO", name: "Sostituzione Frutto", mo: 80, t: "45m", i: ["M_FRUTTO", "T_CACCIAVITE"] },
+                { id: "CITOFONO", name: "Sostituzione Citofono", mo: 110, t: "45m", i: ["M_CITOFONO", "T_CACCIAVITE"] },
+                { id: "SALVAVITA", name: "Ripristino Salvavita", mo: 150, t: "1.5h", i: [] }
+            ],
+            "ELETTRODOMESTICI": [
+                { id: "LAV_FILTRO", name: "Lavatrice: Pulizia Filtro", mo: 60, t: "30m", i: ["T_PANNO", "T_CHIAVE"] },
+                { id: "LAV_MANIGLIA", name: "Lavatrice: Cambio maniglia", mo: 80, t: "45m", i: ["M_MANIGLIA", "T_CACCIAVITE"] },
+                { id: "LAV_TUBO", name: "Lavatrice: Cambio tubo", mo: 50, t: "20m", i: ["M_TUBO_CARICO"] },
+                { id: "LVS_POMPA", name: "Lavastoviglie: Sblocco pompa", mo: 90, t: "1h", i: ["T_TORX"] },
+                { id: "LVS_RUOTE", name: "Lavastoviglie: Cambio ruote", mo: 0, t: "10m", i: ["M_RUOTE_CEST"] },
+                { id: "FRIGO_GUARN", name: "Frigo: Cambio guarnizione", mo: 70, t: "45m", i: ["M_GUARN_FRIGO"] },
+                { id: "FRIGO_LAMP", name: "Frigo: Lampadina", mo: 30, t: "10m", i: ["M_LAMP_FRIGO"] },
+                { id: "CAFFE", name: "Decalcificazione Macchina", mo: 20, t: "30m", i: ["M_DECALC"] },
+                { id: "TV", name: "Risintonizzazione TV", mo: 45, t: "30m", i: [] }
+            ],
+            "HVAC": [
+                { id: "CLIMA_FILTRI", name: "Pulizia Filtri Clima", mo: 70, t: "45m", i: ["M_SPRAY_CLIMA", "T_SCALA"] },
+                { id: "CLIMA_SCARICO", name: "Disotturazione Condensa", mo: 105, t: "1h", i: ["T_SONDA", "T_COMPRESSORE"] }
+            ],
+            "INFISSI": [
+                { id: "TAPPARELLA", name: "Sblocco Tapparella", mo: 125, t: "1.5h", i: ["M_CINTINO", "T_SCALA"] },
+                { id: "SERRATURA", name: "Sostituzione Cilindro", mo: 175, t: "30m", i: ["M_CILINDRO", "T_CACCIAVITE"] }
+            ],
+            "WIFI": [
+                { id: "ROUTER", name: "Reset Router / Cavi", mo: 50, t: "20m", i: ["M_CAVO_ETH"] }
+            ]
+        };
+
+        // --- 3. LOGICA ---
+        let inventory = JSON.parse(localStorage.getItem("masotto_inv")) || {};
+        let tickets = JSON.parse(localStorage.getItem("masotto_maint_db")) || [];
+        let currentAsset = "", currentStatus = "TODO", tempCalc = 0;
+        let currentPresetKey = null;
+
+        function init() {
+            Object.keys(CATALOG).forEach(k => { if(CATALOG[k].t==='TOOL' && inventory[k]===undefined) inventory[k]=false; });
+            renderWarehouse(); renderBoard(); lucide.createIcons();
+        }
+
+        function renderWarehouse() {
+            const el = document.getElementById('warehouse-grid');
+            el.innerHTML = "";
+            Object.keys(CATALOG).forEach(k => {
+                if(CATALOG[k].t === 'TOOL') {
+                    const has = inventory[k];
+                    const cls = has ? "wh-have" : "wh-miss";
+                    const txt = has ? "IN STOCK" : "MANCA";
+                    el.innerHTML += `<div class="wh-item ${cls}" onclick="toggleInv('${k}')"><i data-lucide="${CATALOG[k].i}" class="w-6 h-6 mx-auto mb-1"></i><div class="text-xs font-bold">${CATALOG[k].n}</div><div class="text-[10px]">${txt}</div></div>`;
+                }
+            });
+            lucide.createIcons();
+        }
+
+        function toggleInv(key) {
+            inventory[key] = !inventory[key];
+            localStorage.setItem("masotto_inv", JSON.stringify(inventory));
+            renderWarehouse();
+            if(document.getElementById('modal').style.display==='flex') updateCalc();
+        }
+
+        function openTicket(assetKey, ticketId=null) {
+            currentAsset = assetKey;
+            const presetKey = _resolvePresetKey(assetKey);
+            currentPresetKey = presetKey;
+document.getElementById('m-asset-name').innerText = _assetDisplayName(assetKey);
+            document.getElementById('modal').style.display = 'flex';
+            
+            const sel = document.getElementById('m-type');
+            sel.innerHTML = "";
+            if(RECIPES[currentPresetKey]) RECIPES[currentPresetKey].forEach(r => sel.innerHTML += `<option value="${r.id}">${r.name}</option>`);
+            else sel.innerHTML = "<option>Nessun preset</option>";
+            
+            if(ticketId) {
+                const t = tickets.find(x=>x.id==ticketId);
+                document.getElementById('t-id').value = t.id;
+                sel.value = t.recipeId || "";
+                document.getElementById('m-qty').value = t.qty || 1;
+                document.getElementById('m-labor').value = t.labor || 0;
+                document.getElementById('t-pri').value = t.pri;
+                document.getElementById('t-due').value = t.due;
+                currentStatus = t.status;
+            } else {
+                document.getElementById('t-id').value = "";
+                currentStatus = "TODO";
+            }
+            updateAdvanceBtn();
+            updateCalc();
+        }
+
+        function updateCalc() {
+            const recId = document.getElementById('m-type').value;
+            if(!recId || !RECIPES[currentPresetKey]) return;
+            
+            const recipe = RECIPES[currentPresetKey].find(r => r.id === recId);
+            document.getElementById('est-time').innerText = `Stima Tempo: ${recipe.t}`;
+
+            const tbody = document.getElementById('m-table-body');
+            tbody.innerHTML = "";
+            let matTotal = 0;
+
+            recipe.i.forEach(k => {
+                const item = CATALOG[k];
+                let cost = item.p;
+                let badge = "";
+                
+                if(item.t === 'CONS') {
+                    badge = `<span class="badge-buy">COMPRA</span>`;
+                } else {
+                    if(inventory[k]) { cost = 0; badge = `<span class="badge-reuse">RIUSO</span>`; }
+                    else { badge = `<span class="badge-buy">ASSET</span>`; }
+                }
+                matTotal += cost;
+                tbody.innerHTML += `<tr><td>${item.n}</td><td class="text-xs text-gray-500">${item.t}</td><td>${badge}</td><td class="text-right">€ ${cost.toFixed(2)}</td></tr>`;
+            });
+
+            if(!document.getElementById('t-id').value) document.getElementById('m-labor').value = recipe.mo;
+            tempCalc = matTotal;
+            updateTotalDisplay();
+        }
+
+        function updateTotalDisplay() {
+            const lab = parseFloat(document.getElementById('m-labor').value)||0;
+            document.getElementById('m-total').innerText = `€ ${(tempCalc + lab).toFixed(2)}`;
+        }
+
+        function closeModal() { document.getElementById('modal').style.display='none'; }
+
+        function updateAdvanceBtn() {
+            const btn = document.getElementById('btn-advance');
+            if(currentStatus==='TODO') { btn.innerText="AVVIA LAVORO"; btn.className="w-full py-3 rounded font-bold uppercase mb-4 transition bg-yellow-500 text-black"; }
+            else if(currentStatus==='DOING') { btn.innerText="COMPLETA LAVORO"; btn.className="w-full py-3 rounded font-bold uppercase mb-4 transition bg-green-500 text-black"; }
+            else { btn.innerText="RIAPRI TICKET"; btn.className="w-full py-3 rounded font-bold uppercase mb-4 transition bg-gray-600 text-gray-300"; }
+        }
+
+        // --- CORE: AUTO-HEAL AUDIT ASSET ---
+        function autoHealAsset(ticket) {
+            let targetAssetId = ticket.asset; // Default: assetKey (e.g., "PARETI")
+            
+            // Map Specific Mobile Assets based on Recipe
+            if(ticket.recipeId.startsWith("LAV_")) targetAssetId = "LAVATRICE";
+            else if(ticket.recipeId.startsWith("LVS_")) targetAssetId = "LAVASTOVIGLIE";
+            else if(ticket.recipeId.startsWith("FRIGO_")) targetAssetId = "FRIGORIFERO";
+            else if(ticket.recipeId.startsWith("CLIMA_")) targetAssetId = "HVAC";
+            else if(ticket.recipeId === "CAFFE") targetAssetId = "MACCHINA_CAFFE";
+            else if(ticket.recipeId === "TV") targetAssetId = "TV";
+            else if(ticket.recipeId === "ROUTER") targetAssetId = "ROUTER";
+
+            // Load Audit DB
+            let assets = JSON.parse(localStorage.getItem("masotto_assets_db")) || [];
+            const idx = assets.findIndex(a => a.id === targetAssetId);
+            
+            if(idx > -1) {
+                assets[idx].cond = 100; // Reset Health
+                assets[idx].date = new Date().toISOString().split('T')[0]; // Update Date
+                localStorage.setItem("masotto_assets_db", JSON.stringify(assets));
+                console.log(`Auto-Healed Asset: ${targetAssetId}`);
+            }
+        }
+
+        function advanceStatus() {
+            if(currentStatus==='TODO') currentStatus='DOING';
+            else if(currentStatus==='DOING') {
+                currentStatus='DONE';
+                
+                // 1. UPDATE WAREHOUSE
+                const recId = document.getElementById('m-type').value;
+                const recipe = RECIPES[currentPresetKey].find(r => r.id === recId);
+                recipe.i.forEach(k => { if(CATALOG[k].t==='TOOL') inventory[k]=true; });
+                localStorage.setItem("masotto_inv", JSON.stringify(inventory));
+                
+                // 2. AUTO-HEAL AUDIT
+                saveTicket(); // Save first to have object
+                // Look up just saved ticket
+                const savedTicket = tickets[tickets.length-1]; // Approximation, better pass object
+                autoHealAsset({ asset: currentAsset, recipeId: recId });
+                
+                renderWarehouse();
+            }
+            else currentStatus='TODO';
+            
+            updateAdvanceBtn();
+            saveTicket();
+        }
+
+        function saveTicket() {
+            const idVal = document.getElementById('t-id').value;
+            const recId = document.getElementById('m-type').value;
+            const recipe = RECIPES[currentPresetKey].find(r => r.id === recId);
+            const t = {
+                id: idVal ? parseInt(idVal) : Date.now(),
+                asset: currentAsset,
+                recipeId: recId,
+                title: recipe.name,
+                status: currentStatus,
+                pri: document.getElementById('t-pri').value,
+                due: document.getElementById('t-due').value,
+                labor: document.getElementById('m-labor').value,
+                total: document.getElementById('m-total').innerText
+            };
+            if(idVal) tickets[tickets.findIndex(x=>x.id==idVal)] = t; else tickets.push(t);
+            localStorage.setItem("masotto_maint_db", JSON.stringify(tickets));
+            closeModal(); renderBoard();
+        }
+
+        function deleteTicket() {
+            if(confirm("Eliminare?")) {
+                const id = parseInt(document.getElementById('t-id').value);
+                tickets = tickets.filter(x=>x.id!==id);
+                localStorage.setItem("masotto_maint_db", JSON.stringify(tickets));
+                closeModal(); renderBoard();
+            }
+        }
+
+        function renderBoard() {
+            ['TODO','DOING','DONE'].forEach(s => {
+                document.getElementById(`col-${s}`).innerHTML="";
+                document.getElementById(`cnt-${s}`).innerText="0";
+            });
+            tickets.forEach(t => {
+                document.getElementById(`cnt-${t.status}`).innerText++;
+                const col = t.pri==='P0'?'#ef4444':(t.pri==='P1'?'#f59e0b':'#22c55e');
+                document.getElementById(`col-${t.status}`).innerHTML += `<div class="ticket" style="border-left-color:${col}" onclick="openTicket('${t.asset}', ${t.id})"><div class="flex justify-between text-xs text-gray-400 mb-1"><span style="color:${col}; font-weight:800">${t.pri}</span><span>${t.due || '-'}</span></div><div class="font-bold text-white text-sm">${t.title}</div><div class="text-right text-teal-400 font-mono text-xs mt-1">${t.total}</div></div>`;
+            });
+        }
+
+        window.onload = init;
+    </script>
+<script id="masotto-sidebar">
+(function(){
+  const PAGES = [
+    ["index.html","Dashboard","layout-dashboard"],
+    ["ANAGRAFICA.html","Anagrafica","id-card"],
+    ["asset.html","Asset","boxes"],
+    ["audit.html","Audit","clipboard-check"],
+    ["manutenzione.html","Manutenzione","wrench"],
+    ["prenotazioni.html","Prenotazioni","calendar"],
+    ["FINANZE.html","Finanze","pie-chart"],
+    ["conto.html","Conto","wallet"],
+    ["consuntivo_25.html","Consuntivo 2025","file-text"],
+    ["sicurezza.html","Sicurezza","shield"]
+  ];
+
+  function purgeOtherAlloggi(){
+    try{
+      const kill = ["nolo","suite","nest","studio","heritage","bassano","chavez","termopili"];
+      Object.keys(localStorage).forEach(k=>{
+        const lk = k.toLowerCase();
+        if(k.startsWith("masotto_")) return;
+        if(kill.some(t=>lk.includes(t))) localStorage.removeItem(k);
+      });
+          window.__MS_SIDEBAR_DONE = true;
+}catch(e){}
+  }
+
+  async function ensureMasterDB(force=false){
+    try{
+      let master = null;
+
+      if(window.MASOTTO_DB) master = window.MASOTTO_DB;
+
+      if(!master){
+        const res = await fetch("masotto_complete_database.json", {cache:"no-store"});
+        if(!res.ok) throw new Error("fetch failed");
+        master = await res.json();
+      }
+
+const map = {
+        "masotto_prop_data": "property_master",
+        "masotto_assets_mobile_db": "assets_mobile",
+        "masotto_structural_assets_db": "structural_assets",
+        "masotto_finance_db": "finances",
+        "masotto_booking_db": "bookings",
+        "masotto_maint_db": "tickets",
+        "masotto_insurance_db": "insurance",
+        "masotto_utilities_db": "utilities",
+        "masotto_contacts_db": "contacts",
+        "masotto_maintenance_presets_db": "maintenance_presets"
+      };
+
+      purgeOtherAlloggi();
+
+      for(const [lsKey, section] of Object.entries(map)){
+        const existing = localStorage.getItem(lsKey);
+        const isEmpty = !existing || existing==="null" || existing==="[]" || existing==="{}";
+        if(force || isEmpty){
+          localStorage.setItem(lsKey, JSON.stringify(master[section] ?? []));
+        }
+      }
+      localStorage.setItem("active_property", "Masotto Terrace View");
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function mountSidebar(){
+  // idempotent mount (safe even if scripts load twice)
+  if (window.__MS_SIDEBAR_DONE && document.getElementById("msSidebar")) return;
+  try{
+    // remove legacy sidebars, but NEVER remove #msSidebar
+    document.querySelectorAll("aside.sidebar, div.sidebar, #sidebar, [data-legacy-sidebar=\"1\"]").forEach(el=>el.remove());
+    document.querySelectorAll(".ms-sidebar").forEach(el=>{ if(el.id !== "msSidebar") el.remove(); });
+  }catch(e){}
+  if (document.getElementById("msSidebar")) { window.__MS_SIDEBAR_DONE = true; return; }
+
+  const path = (location.pathname.split("/").pop() || "index.html");
+    const nav = PAGES.map(([href,label,icon])=>{
+      const active = (href.toLowerCase() === path.toLowerCase()) ? "active" : "";
+      return `<a class="${active}" href="${href}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></a>`;
+    }).join("");
+
+    const sidebar = document.createElement("aside");
+    sidebar.className="ms-sidebar";
+    sidebar.id="msSidebar";
+    sidebar.innerHTML = `
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+             style="background:linear-gradient(135deg,#004D54,#10b981)">2M</div>
+        <div>
+          <div class="text-white font-bold leading-tight">Masotto Terrace</div>
+          <div class="ms-chip">single-property mode</div>
+        </div>
+      </div>
+      <nav class="ms-nav space-y-1">${nav}</nav>
+      <div class="mt-6 p-3 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);">
+        <div class="text-[11px] text-gray-400">Data source</div>
+        <div class="text-[12px] text-white font-semibold">masotto_complete_database.json</div>
+        <button id="msSyncBtn" class="mt-3 w-full text-xs font-bold px-3 py-2 rounded-lg"
+          style="background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.35);color:#a7f3d0;">
+          Sync DB
+        </button>
+      </div>
+    `;
+
+    // main wrapper
+    const mainWrap = document.createElement("div");
+    mainWrap.className = "ms-main";
+    while(document.body.firstChild){
+      mainWrap.appendChild(document.body.firstChild);
+    }
+    document.body.appendChild(sidebar);
+    document.body.appendChild(mainWrap);
+
+    // mobile topbar + toggle
+    const topbar = document.createElement("div");
+    topbar.className="ms-topbar p-3 flex items-center justify-between lg:hidden";
+    topbar.innerHTML = `
+      <button id="msToggle" class="px-3 py-2 rounded-lg text-white text-xs font-bold"
+        style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);">
+        ☰ Menu
+      </button>
+      <div class="text-white font-bold text-sm">Masotto Terrace</div>
+      <div style="width:64px"></div>
+    `;
+    mainWrap.prepend(topbar);
+
+    document.getElementById("msToggle").addEventListener("click", ()=>{
+      sidebar.classList.toggle("open");
+    });
+    document.getElementById("msSyncBtn").addEventListener("click", async ()=>{
+      await ensureMasterDB(true);
+      location.reload();
+    });
+  }
+
+  // boot
+  window.__ensureMasottoDB = ensureMasterDB;
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    await ensureMasterDB(false);
+    mountSidebar();
+    if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  });
+})();
+</script>
+    
+</body>
+</html>
