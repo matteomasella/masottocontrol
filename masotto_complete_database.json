@@ -668,14 +668,14 @@
       "email": "giani.cantarini@gmail.com",
       "phone": "02 76111056",
       "address": "Via Negroli 30/2, 20133 Milano",
-      "notes": NaN
+      "notes": null
     },
     {
       "role": "Assistenza Miele",
       "name": "Miele Support",
       "email": "",
       "phone": "800-845677",
-      "address": NaN,
+      "address": null,
       "notes": "Lun-Sab"
     },
     {
@@ -683,7 +683,7 @@
       "name": "Hisense Support",
       "email": "",
       "phone": "800-321999",
-      "address": NaN,
+      "address": null,
       "notes": ""
     },
     {
@@ -691,7 +691,7 @@
       "name": "Fastweb Support",
       "email": "",
       "phone": "",
-      "address": NaN,
+      "address": null,
       "notes": "User 22259022 SSID FASTWEB-FC918B"
     }
   ]

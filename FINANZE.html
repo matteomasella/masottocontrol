@@ -660,7 +660,7 @@ const map = {
 // --- FINANZE: LIVE CONTROL (localStorage first, fallback to window.MASOTTO_DB) ---
 function eur(n){
   const v = Number(n||0);
-  return v.toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+  return v./*noThousands*/;
 }
 function normStr(s){ return String(s||'').trim(); }
 function parseISOorDMY(s){

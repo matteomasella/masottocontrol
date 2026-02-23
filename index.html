@@ -188,7 +188,7 @@ body{background:var(--bg-dark);}
         let propData = { price: 350000, year: 2020, mq: 65 };
 
         // Keys
-        const KEYS = { BK: "masotto_booking_db", FN: "masotto_finance_db", MN: "masotto_maint_db", AS: "masotto_audit_db" };
+        const KEYS = { BK: "masotto_booking_db", FN: "masotto_finance_db", MN: "masotto_maint_db", ASM: "masotto_assets_mobile_db", ASS: "masotto_structural_assets_db" };
 
         function init() {
             // Load Prop Data
@@ -199,34 +199,98 @@ body{background:var(--bg-dark);}
             const bookings = JSON.parse(localStorage.getItem(KEYS.BK)) || [];
             const finances = JSON.parse(localStorage.getItem(KEYS.FN)) || [];
             const tickets = JSON.parse(localStorage.getItem(KEYS.MN)) || [];
-            const assets = JSON.parse(localStorage.getItem(KEYS.AS)) || [];
+            const assetsM = JSON.parse(localStorage.getItem(KEYS.ASM)) || [];
+            const assetsS = JSON.parse(localStorage.getItem(KEYS.ASS)) || [];
+            const assets = [...assetsM, ...assetsS];
 
             calcDashboard(bookings, finances);
             renderAlerts(bookings, finances, tickets, assets);
             lucide.createIcons();
         }
 
-        function calcDashboard(bookings, finances) {
-            let totNet = 0, totNights = 0, totGross = 0;
-            bookings.forEach(b => { totNet += (b.net||0); totNights += (parseInt(b.n)||0); totGross += (b.price||0); });
-            
-            let totExp = 0;
-            finances.forEach(f => { if(f.status === 'paid') totExp += (f.amount||0); });
+        
+        function numAny(v){
+            if(v===null||v===undefined) return 0;
+            if(typeof v === 'number' && isFinite(v)) return v;
+            let s = String(v).trim();
+            if(!s) return 0;
+            s = s.replace(/€/g,'').replace(/\s/g,'');
+            // accept 1.234,56 or 1234,56 or 1234.56
+            // remove thousands separators (.)
+            // if comma present, treat as decimal separator
+            const hasComma = s.includes(',');
+            if(hasComma){
+                s = s.replace(/\./g,'').replace(/,/g,'.');
+            }
+            // remove any remaining non-numeric except dot and minus
+            s = s.replace(/[^0-9.-]/g,'');
+            const n = Number(s);
+            return isFinite(n) ? n : 0;
+        }
+        function eurNoThousands(n, decimals=0){
+            const v = (typeof n === 'number' && isFinite(n)) ? n : numAny(n);
+            const fixed = v.toFixed(decimals);
+            // fixed uses dot for decimals, convert to comma, no thousands
+            return fixed.replace('.', ',');
+        }
+        function eurLabel(n, decimals=0){
+            return "€ " + eurNoThousands(n, decimals);
+        }
 
+function calcDashboard(bookings, finances) {
+            // normalize bookings
+            let totGross = 0, totNights = 0;
+            bookings.forEach(b => {
+                const nights = parseInt(b.nights ?? b.n ?? 0) || 0;
+                const gross = numAny(b.gross_eur ?? b.price ?? b.gross ?? 0);
+                totNights += nights;
+                totGross += gross;
+            });
+
+            // finances: treat all as expenses unless explicitly marked as income
+            let totExp = 0, totInc = 0;
+            finances.forEach(f => {
+                const amt = numAny(f.amount_eur ?? f.amount ?? 0);
+                const typ = String(f.type ?? f.flow ?? "").toLowerCase(); // optional
+                if(typ === "income" || typ === "revenue" || typ === "entrata") totInc += amt;
+                else totExp += amt;
+            });
+
+            const totNet = totGross + totInc; // bookings gross + other income
             const realAdr = totNights > 0 ? (totGross / totNights) : 0;
-            const currentVal = propData.mq * MARKET_DATA.priceMq;
-            const gain = ((currentVal - propData.price) / propData.price) * 100;
 
-            document.getElementById('kpi-bal').innerText = `€ ${(totNet - totExp).toLocaleString('it-IT',{maximumFractionDigits:0})}`;
-            document.getElementById('kpi-rev').innerText = `€ ${totNet.toLocaleString('it-IT',{maximumFractionDigits:0})}`;
-            document.getElementById('kpi-exp').innerText = `€ ${totExp.toLocaleString('it-IT',{maximumFractionDigits:0})}`;
+            // property data
+            const propArr = JSON.parse(localStorage.getItem("masotto_prop_data") || "[]");
+            const p0 = Array.isArray(propArr) ? propArr[0] : null;
+            const purchasePrice = numAny(p0?.purchase_price_eur ?? propData.price ?? 0);
+            const mq = numAny(p0?.surface_mq ?? p0?.mq ?? 28.4); // fallback known surface
+            const currentVal = mq * MARKET_DATA.priceMq;
+            const gain = purchasePrice > 0 ? ((currentVal - purchasePrice) / purchasePrice) * 100 : 0;
+
+            document.getElementById('kpi-bal').innerText = eurLabel(totNet - totExp, 0);
+            document.getElementById('kpi-rev').innerText = eurLabel(totNet, 0);
+            document.getElementById('kpi-exp').innerText = eurLabel(totExp, 0);
             document.getElementById('kpi-nights').innerText = totNights;
-            
-            document.getElementById('mkt-val').innerText = `€ ${currentVal.toLocaleString('it-IT')}`;
-            document.getElementById('mkt-gain').innerText = `${gain > 0 ? '+' : ''}${gain.toFixed(1)}% vs ${propData.year}`;
-            document.getElementById('my-adr').innerText = `€ ${realAdr.toFixed(0)}`;
 
-            renderChart(realAdr);
+            document.getElementById('mkt-val').innerText = eurLabel(currentVal, 0);
+            document.getElementById('mkt-gain').innerText = `${gain.toFixed(1).replace('.',',')}%`;
+
+            // Chart
+            if(window._revChart) window._revChart.destroy();
+            const ctx = document.getElementById('revChart');
+            window._revChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ricavi', 'Costi'],
+                    datasets: [{ data: [Math.max(0, totNet), Math.max(0, totExp)] }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    cutout: '70%'
+                }
+            });
+
+            document.getElementById('adr-val').innerText = eurLabel(realAdr, 0);
         }
 
         function renderAlerts(bookings, finances, tickets, assets) {
@@ -235,68 +299,105 @@ body{background:var(--bg-dark);}
             let alerts = [];
             const today = new Date();
 
-            // 1. SPESE FUTURE / PENDING (Finance)
+            const d0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+            // 1) Upcoming expenses (future dated finances)
             finances.forEach(f => {
-                if(f.status === 'pending') {
-                    const d = new Date(f.date);
-                    alerts.push({ type: 'EXP', date: d, title: f.desc, sub: 'In Scadenza', val: `€ ${f.amount}`, sort: d.getTime(), cls: 'type-exp', icon: 'receipt-euro' });
+                const ds = f.date || f.d || f.when;
+                if(!ds) return;
+                const d = new Date(ds);
+                if(isNaN(d.getTime())) return;
+                if(d >= d0) {
+                    const amt = numAny(f.amount_eur ?? f.amount ?? 0);
+                    const title = f.description ?? f.desc ?? f.title ?? "Spesa";
+                    alerts.push({
+                        type: 'EXP',
+                        date: d,
+                        title: title,
+                        sub: 'Pagamento pianificato',
+                        val: eurLabel(amt, 2),
+                        sort: d.getTime(),
+                        cls: 'type-exp',
+                        icon: 'receipt-euro'
+                    });
                 }
             });
 
-            // 2. MANUTENZIONI APERTE (Maintenance)
+            // 2) Open maintenance tickets
             tickets.forEach(t => {
-                if(t.status !== 'done') {
-                    // Check Due Date if exists
-                    const d = t.due ? new Date(t.due.split('/').reverse().join('-')) : new Date(); // Mock date parse if needed
-                    alerts.push({ type: 'MNT', date: d, title: t.title, sub: `Asset: ${t.asset}`, val: t.pri, sort: d.getTime(), cls: 'type-maint', icon: 'hammer' });
+                const st = String(t.status ?? "").toLowerCase();
+                if(st && st !== 'done' && st !== 'closed' && st !== 'completed' && st !== 'true' && st !== 'ok' && st !== 'done' && st !== 'done ') {
+                    if(st === 'done' || st === 'completed') return;
                 }
+                if(st === 'done' || st === 'completed' || st === 'closed') return;
+
+                const ds = t.due || t.date || t.when;
+                const d = ds ? new Date(ds) : d0;
+                const title = t.title ?? t.task ?? "Manutenzione";
+                alerts.push({
+                    type: 'MNT',
+                    date: d,
+                    title: title,
+                    sub: 'Aperta',
+                    val: t.asset ? `Asset ${t.asset}` : '',
+                    sort: d.getTime(),
+                    cls: 'type-mnt',
+                    icon: 'wrench'
+                });
             });
 
-            // 3. ASSET ALERT (Audit)
-            assets.forEach(a => {
-                const age = (today - new Date(a.date)) / (1000*60*60*24*365);
-                const lifeLeft = a.life - age;
-                if(lifeLeft < 1) { // Meno di 1 anno di vita
-                    alerts.push({ type: 'AST', date: today, title: `Sostituzione ${a.name}`, sub: 'Vita Utile Finita', val: 'CRITICO', sort: 0, cls: 'type-asset', icon: 'alert-triangle' });
-                }
-            });
-
-            // 4. BOOKINGS (In Casa / Arrivo)
+            // 3) Upcoming bookings (next 14 days)
             bookings.forEach(b => {
-                const inDate = new Date(b.in);
-                const outDate = new Date(b.in); outDate.setDate(inDate.getDate() + parseInt(b.n));
-                
-                if (inDate <= today && outDate >= today) {
-                    alerts.push({ type: 'BKG', date: outDate, title: `Ospite: ${b.guest}`, sub: 'Attualmente In Casa', val: 'IN HOUSE', sort: 0, cls: 'type-book', icon: 'home' });
-                } else if (inDate > today) {
-                    alerts.push({ type: 'BKG', date: inDate, title: `Arrivo: ${b.guest}`, sub: `${b.n} notti`, val: b.in, sort: inDate.getTime(), cls: 'type-book', icon: 'calendar-check' });
+                const ds = b.check_in || b.arrivo || b.start || b.date;
+                if(!ds) return;
+                const d = new Date(ds);
+                if(isNaN(d.getTime())) return;
+                const diff = (d - d0) / (1000*60*60*24);
+                if(diff >= 0 && diff <= 14) {
+                    const guest = b.guest ?? b.ospite ?? 'Ospite';
+                    const nights = parseInt(b.nights ?? b.n ?? 0) || 0;
+                    alerts.push({
+                        type: 'BKG',
+                        date: d,
+                        title: `Arrivo: ${guest}`,
+                        sub: `${nights} notti`,
+                        val: b.source ?? b.portal ?? '',
+                        sort: d.getTime(),
+                        cls: 'type-bkg',
+                        icon: 'calendar'
+                    });
                 }
             });
 
-            // SORT BY DATE / URGENCY
-            alerts.sort((a,b) => a.sort - b.sort);
-
-            // RENDER
-            document.getElementById('alert-count').innerText = alerts.length;
-            
-            alerts.forEach(a => {
-                const dateStr = a.date instanceof Date ? a.date.toLocaleDateString() : a.val;
-                let valColor = a.type === 'EXP' ? 'text-red-400' : (a.type === 'BKG' ? 'text-teal-400' : 'text-white');
-
-                list.innerHTML += `
-                <div class="alert-item ${a.cls}">
-                    <div class="flex items-center flex-1">
-                        <div class="al-icon"><i data-lucide="${a.icon}" class="w-4 h-4 text-gray-300"></i></div>
-                        <div class="al-content">
-                            <div class="al-title">${a.title}</div>
-                            <div class="al-sub"><span>${a.sub}</span> <span>• ${dateStr}</span></div>
-                        </div>
+            // sort and render (top 6)
+            alerts.sort((a,b)=>a.sort-b.sort);
+            alerts.slice(0,6).forEach(a=>{
+                const d = a.date;
+                const dd = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+                const row = document.createElement('div');
+                row.className = "alert-item";
+                row.innerHTML = `
+                    <div class="alert-left ${a.cls}">
+                      <i data-lucide="${a.icon}" class="w-4 h-4"></i>
                     </div>
-                    <div class="al-val ${valColor}">${a.val}</div>
-                </div>`;
+                    <div class="flex-1">
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="font-semibold text-white text-sm">${a.title}</div>
+                        <div class="text-xs text-gray-400">${dd}</div>
+                      </div>
+                      <div class="text-xs text-gray-400 mt-0.5">${a.sub}</div>
+                    </div>
+                    <div class="text-xs font-bold text-white whitespace-nowrap">${a.val||''}</div>
+                `;
+                list.appendChild(row);
             });
 
-            if(alerts.length === 0) list.innerHTML = `<div class="text-sm text-gray-500 italic text-center py-4">Nessun alert attivo.</div>`;
+            if(!alerts.length){
+                const empty = document.createElement('div');
+                empty.className = "text-xs text-gray-400";
+                empty.innerText = "Nessun alert attivo.";
+                list.appendChild(empty);
+            }
         }
 
         function renderChart(myAdr) {

@@ -165,7 +165,40 @@ body{background:var(--bg-dark);}
 
     <script>
         // --- DATA ---
-        let allBookings = [
+        function numAny(v){
+    if(v===null||v===undefined) return 0;
+    if(typeof v === 'number' && isFinite(v)) return v;
+    let s = String(v).trim();
+    if(!s) return 0;
+    s = s.replace(/€/g,'').replace(/\s/g,'');
+    const hasComma = s.includes(',');
+    if(hasComma){ s = s.replace(/\./g,'').replace(/,/g,'.'); }
+    s = s.replace(/[^0-9.-]/g,'');
+    const n = Number(s);
+    return isFinite(n) ? n : 0;
+}
+function eurNoThousands(n, decimals=2){
+    const v = (typeof n === 'number' && isFinite(n)) ? n : numAny(n);
+    return v.toFixed(decimals).replace('.', ',');
+}
+function eurLabel(n, decimals=2){ return "€ " + eurNoThousands(n, decimals); }
+
+function loadBookingsFromLS(){
+    try{
+        const raw = localStorage.getItem("masotto_booking_db");
+        const arr = raw ? JSON.parse(raw) : null;
+        return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+}
+function saveBookingsToLS(arr){
+    try{ localStorage.setItem("masotto_booking_db", JSON.stringify(arr||[])); }catch(e){}
+}
+
+// SINGLE SOURCE OF TRUTH
+let allBookings = loadBookingsFromLS();
+if(!allBookings.length){
+    // fallback to embedded seed (kept for first run only)
+allBookings = [
             { id: 1, guest: "Gabriela Stempka", checkin: "2025-08-25", checkout: "2025-08-27", price: 142.80, comm: 21.42, portal: "Airbnb", pax: 2 },
             { id: 2, guest: "Flavio Nacacura", checkin: "2025-08-27", checkout: "2025-09-03", price: 452.50, comm: 0, portal: "Diretta", pax: 1 },
             { id: 3, guest: "Christie Swainston", checkin: "2025-09-04", checkout: "2025-09-07", price: 441.00, comm: 66.15, portal: "Airbnb", pax: 1 },
@@ -177,6 +210,8 @@ body{background:var(--bg-dark);}
             { id: 9, guest: "Sarà Dario", checkin: "2025-12-04", checkout: "2025-12-21", price: 1026.00, comm: 0, portal: "Diretta", pax: 1 },
             { id: 10, guest: "Sarà Dario (2)", checkin: "2026-01-12", checkout: "2026-01-26", price: 1428.00, comm: 0, portal: "Diretta", pax: 1 }
         ];
+}
+
 
         let charts = {};
 
@@ -214,10 +249,10 @@ body{background:var(--bg-dark);}
                 totClean += c.clean;
             });
 
-            document.getElementById('stat-gross').innerText = `€ ${totGross.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
-            document.getElementById('stat-net').innerText = `€ ${totNet.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
-            document.getElementById('stat-tax').innerText = `€ ${totTaxPay.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
-            document.getElementById('stat-clean').innerText = `€ ${totClean.toLocaleString('it-IT', {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-gross').innerText = `${eurLabel(totGross,2)}`;
+            document.getElementById('stat-net').innerText = `${eurLabel(totNet,2)}`;
+            document.getElementById('stat-tax').innerText = `${eurLabel(totTaxPay,2)}`;
+            document.getElementById('stat-clean').innerText = `${eurLabel(totClean,2)}`;
 
             // Render Grid
             const grid = document.getElementById('booking-grid');

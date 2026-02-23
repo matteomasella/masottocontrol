@@ -231,7 +231,40 @@ body{background:var(--bg-dark);}
 
     <script>
         // --- 1. DATABASE ASSET ---
-        let assets = [
+        function numAny(v){
+    if(v===null||v===undefined) return 0;
+    if(typeof v === 'number' && isFinite(v)) return v;
+    let s = String(v).trim();
+    if(!s) return 0;
+    s = s.replace(/€/g,'').replace(/\s/g,'');
+    const hasComma = s.includes(',');
+    if(hasComma){ s = s.replace(/\./g,'').replace(/,/g,'.'); }
+    s = s.replace(/[^0-9.-]/g,'');
+    const n = Number(s);
+    return isFinite(n) ? n : 0;
+}
+function eurNoThousands(n, decimals=2){
+    const v = (typeof n === 'number' && isFinite(n)) ? n : numAny(n);
+    return v.toFixed(decimals).replace('.', ',');
+}
+function eurLabel(n, decimals=2){ return "€ " + eurNoThousands(n, decimals); }
+
+function loadAssetsFromLS(){
+    try{
+        const raw = localStorage.getItem("masotto_assets_mobile_db");
+        const arr = raw ? JSON.parse(raw) : null;
+        return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+}
+function saveAssetsToLS(arr){
+    try{ localStorage.setItem("masotto_assets_mobile_db", JSON.stringify(arr||[])); }catch(e){}
+}
+
+// SINGLE SOURCE OF TRUTH
+let assets = loadAssetsFromLS();
+if(!assets.length){
+    // fallback to embedded seed (kept for first run only)
+assets = [
             { 
                 id: 94, name: "Scaldabagno Gas", cat: "Clima", model: "HERMANN (Saunier Duval) OPALIA EXTERNAL F", sn: "211828001001325300100128", date: "2023-10-02", price: 0, warEnd: 2025, support: "Centro Ass. Hermann", isBoiler: true,
                 maintHistory: [{ date: '2023-10-02', type: 'Installazione', cost: 0, note: 'Prima accensione' }]
@@ -248,6 +281,8 @@ body{background:var(--bg-dark);}
             { id: 11, name: "Materasso Matr.", cat: "Mobilio", model: "IKEA VAGSTRANDA", sn: "-", date: "2023-10-02", price: 399, warEnd: 2033, support: "Chat / Store", maintHistory: [] },
             { id: 12, name: "Topper Memory", cat: "Mobilio", model: "IKEA TUSTNA", sn: "-", date: "2023-10-02", price: 150, warEnd: 2025, support: "Chat / Store", maintHistory: [] }
         ];
+}
+
 
         // --- 2. RENDER ---
         function init() {
